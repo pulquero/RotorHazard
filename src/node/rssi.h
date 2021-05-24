@@ -20,8 +20,8 @@
 constexpr uint16_t MAX_DURATION = 0xFFFF;
 inline uint16_t toDuration(uint32_t ms) { return uint16_t(min(ms, uint32_t(MAX_DURATION))); }
 
-constexpr uint8_t HISTORY_SIZE = 14;
-constexpr uint8_t PH_HISTORY_SIZE = (HISTORY_SIZE+1); // should be odd
+constexpr uint8_t HISTORY_SIZE = 6;
+constexpr uint8_t PH_HISTORY_SIZE = (HISTORY_SIZE+1); // should be odd, +1 to allow for current value
 constexpr uint16_t RSSI_HISTORY_SIZE = 800; // NB: need to leave about a 100 bytes free RAM
 constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 
@@ -30,7 +30,11 @@ constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 #undef USE_UNIFIED_SENDBUFFER
 #endif
 
+#if defined(USE_PH) || defined(__TEST__)
+#define SENDBUFFER SortedUnifiedSendBuffer<HISTORY_SIZE>
+#else
 #define SENDBUFFER UnifiedSendBuffer<Extremum,HISTORY_SIZE>
+#endif
 
 #define PEAK_SENDBUFFER_SINGLE SinglePeakSendBuffer
 #define PEAK_SENDBUFFER_MULTI MultiPeakSendBuffer<HISTORY_SIZE/2>
@@ -52,14 +56,25 @@ enum Mode
     RAW = 2
 };
 
+#ifdef USE_PH
+#define DEFAULT_ENTER_AT_LEVEL 40
+#define DEFAULT_EXIT_AT_LEVEL 40
+#else
+#define DEFAULT_ENTER_AT_LEVEL 96
+#define DEFAULT_EXIT_AT_LEVEL 80
+#endif
+
 struct Settings
 {
     freq_t volatile vtxFreq = 5800;
     // lap pass begins when RSSI is at or above this level
-    rssi_t volatile enterAtLevel = 96;
+    rssi_t volatile enterAtLevel = DEFAULT_ENTER_AT_LEVEL;
     // lap pass ends when RSSI goes below this level
-    rssi_t volatile exitAtLevel = 80;
+    rssi_t volatile exitAtLevel = DEFAULT_EXIT_AT_LEVEL;
     Mode volatile mode = TIMER;
+#ifdef __TEST__
+    bool volatile usePh = false;
+#endif
 };
 
 class State
@@ -182,7 +197,14 @@ private:
 
 #if defined(USE_PH) || defined(__TEST__)
     ConnectedComponent ccs[(PH_HISTORY_SIZE+1)/2];
+#ifdef __TEST__
+public:
+#endif
     rssi_t phData[PH_HISTORY_SIZE];
+    uint_fast8_t phSortedIdxs[PH_HISTORY_SIZE];
+#ifdef __TEST__
+private:
+#endif
 #endif
 
     bool needsToSettle = true;
@@ -202,7 +224,14 @@ private:
     inline void updateRssiHistory();
     bool checkForCrossing(ExtremumType t, int rssiChange);
 #if defined(USE_PH) || defined(__TEST__)
-    bool checkForCrossing_ph(ExtremumType t, uint8_t threshold);
+#ifdef __TEST__
+public:
+#endif
+    bool checkForCrossing_ph(ExtremumType t, uint8_t enterThreshold, uint8_t exitThreshold);
+    void preparePhData(rssi_t currentValue);
+#ifdef __TEST__
+private:
+#endif
 #endif
     bool checkForCrossing_old(rssi_t enterThreshold, rssi_t exitThreshold);
 public:

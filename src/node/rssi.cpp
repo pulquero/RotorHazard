@@ -165,11 +165,10 @@ ExtremumType RssiNode::updateHistory(const int rssiChange)
 bool RssiNode::checkForCrossing(const ExtremumType t, const int rssiChange)
 {
 #if defined(USE_PH)
-    uint8_t level = (settings.enterAtLevel == settings.exitAtLevel) ? settings.enterAtLevel : 20;
-    return checkForCrossing_ph(t, level);
+    return checkForCrossing_ph(t, settings.enterAtLevel, settings.exitAtLevel);
 #elif defined(__TEST__)
-    if (settings.enterAtLevel == settings.exitAtLevel) {
-        return checkForCrossing_ph(t, settings.enterAtLevel);
+    if (settings.usePh) {
+        return checkForCrossing_ph(t, settings.enterAtLevel, settings.exitAtLevel);
     } else {
         return checkForCrossing_old(settings.enterAtLevel, settings.exitAtLevel);
     }
@@ -179,7 +178,7 @@ bool RssiNode::checkForCrossing(const ExtremumType t, const int rssiChange)
 }
 
 #if defined(USE_PH) || defined(__TEST__)
-bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t threshold)
+bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t enterThreshold, const uint8_t exitThreshold)
 {
     const SENDBUFFER& sendBuffer = *((SENDBUFFER*)(history.sendBuffer));
 
@@ -189,40 +188,54 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
 
     const ExtremumType prevType = sendBuffer.typeAt(sendBuffer.size()-1);
     if (state.crossing && prevType == PEAK && currentType == NADIR) {
+        preparePhData(history.nadir.rssi);
         int_fast8_t lastIdx = sendBuffer.size();
-        phData[lastIdx] = history.nadir.rssi;
-        for (int_fast8_t i=lastIdx-1; i>=0; i--) {
-            phData[i] = sendBuffer[i].rssi;
-        }
-        calculateNadirPersistentHomology<rssi_t,PH_HISTORY_SIZE>(phData, lastIdx+1, ccs, &lastIdx);
+        calculateNadirPersistentHomology<rssi_t,PH_HISTORY_SIZE>(phData, phSortedIdxs, lastIdx+1, ccs, &lastIdx);
 
         // find lifetime of last value when a nadir
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
             const uint_fast8_t lastLife = phData[cc.death] - phData[cc.birth];
-            if (lastLife > threshold) {
+            if (lastLife > exitThreshold) {
                 endCrossing();
             }
         }
     } else if (!state.crossing && prevType == NADIR && currentType == PEAK) {
+        preparePhData(history.peak.rssi);
         int_fast8_t lastIdx = sendBuffer.size();
-        phData[lastIdx] = history.peak.rssi;
-        for (int_fast8_t i=lastIdx-1; i>=0; i--) {
-            phData[i] = sendBuffer[i].rssi;
-        }
-        calculatePeakPersistentHomology<rssi_t,PH_HISTORY_SIZE>(phData, lastIdx+1, ccs, &lastIdx);
+        calculatePeakPersistentHomology<rssi_t,PH_HISTORY_SIZE>(phData, phSortedIdxs, lastIdx+1, ccs, &lastIdx);
 
         // find lifetime of last value when a peak
         if (lastIdx < 0) {
             ConnectedComponent& cc = ccs[-lastIdx-1];
             const uint_fast8_t lastLife = phData[cc.birth] - phData[cc.death];
-            if (lastLife > threshold) {
+            if (lastLife > enterThreshold) {
                 startCrossing();
             }
         }
     }
 
     return state.crossing;
+}
+
+void RssiNode::preparePhData(const rssi_t currentValue)
+{
+    const SENDBUFFER& sendBuffer = *((SENDBUFFER*)(history.sendBuffer));
+
+    // copy history
+    const int_fast8_t lastIdx = sendBuffer.size();
+    for (int_fast8_t i=lastIdx-1; i>=0; i--) {
+        phData[i] = sendBuffer[i].rssi;
+        phSortedIdxs[i] = sendBuffer.sortedIdxs[i];
+    }
+
+    // insert current value
+    phData[lastIdx] = currentValue;
+    int_fast8_t j = lastIdx-1;
+    for (; j>=0 && phData[phSortedIdxs[j]] > currentValue; j--) {
+        phSortedIdxs[j+1] = phSortedIdxs[j];
+    }
+    phSortedIdxs[j+1] = lastIdx;
 }
 #endif
 

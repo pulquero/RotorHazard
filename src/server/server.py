@@ -28,8 +28,6 @@ PROGRAM_START_MTONIC = monotonic()
 # offset for converting 'monotonic' time to epoch milliseconds since 1970-01-01
 MTONIC_TO_EPOCH_MILLIS_OFFSET = PROGRAM_START_EPOCH_TIME - 1000.0*PROGRAM_START_MTONIC
 
-logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
-
 # Normal importing resumes here
 import gevent.monkey
 gevent.monkey.patch_all()
@@ -38,26 +36,26 @@ import io
 import os
 import sys
 import base64
+import argparse
 import subprocess
 import importlib
-from functools import wraps
+import functools
+import socket
+import random
+import string
+import json
 from collections import OrderedDict
 from six import unichr, string_types
 
 from flask import Flask, send_file, request, Response, session, templating, redirect
 from flask_socketio import SocketIO, emit
 
-import socket
-import random
-import string
-import json
-
-from . import Config, Database, Results, Language, RHData, RHUtils
+from . import Config, Database, Results, Language, \
+    RHData, RHRace, RHUtils, PageCache, RHGPIO, \
+    web
 from .RHUtils import catchLogExceptionsWrapper
 from .ClusterNodeSet import SecondaryNode, ClusterNodeSet
-from . import PageCache
 from .util.SendAckQueue import SendAckQueue
-from . import RHGPIO
 from .util.ButtonInputHandler import ButtonInputHandler
 from .util import stm32loader
 
@@ -67,15 +65,14 @@ from .eventmanager import Evt, EventManager
 Events = EventManager()
 
 # LED imports
-from .led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, Color, ColorVal, ColorPattern, hexToColor
+from leds import Color, ColorVal, hexToColor
+from .led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, ColorPattern
 
 import helpers as helper_pkg
 import sensors as sensor_pkg
 import leds as led_pkg
 from interface.Plugins import Plugins, search_modules
 from sensors import Sensors
-from . import RHRace
-from .RHRace import StartBehavior, WinCondition, WinStatus, RaceStatus
 from data_export import DataExportManager
 
 APP = Flask(__name__, static_url_path='/static')
@@ -102,24 +99,29 @@ CMDARG_ZIP_LOGS_STR = '--ziplogs'        # create logs .zip file
 CMDARG_JUMP_TO_BL_STR = '--jumptobl'     # send jump-to-bootloader command to node
 CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill processor
 
-if __name__ == '__main__' and len(sys.argv) > 1:
-    if CMDARG_VERSION_LONG_STR in sys.argv or CMDARG_VERSION_SHORT_STR in sys.argv:
-        sys.exit(0)
-    if CMDARG_ZIP_LOGS_STR in sys.argv:
-        log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
-        sys.exit(0)
-    if CMDARG_JUMP_TO_BL_STR not in sys.argv:  # handle jump-to-bootloader argument later
-        if CMDARG_FLASH_BPILL_STR in sys.argv:
-            argIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
-            portStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
-                                                len(Config.SERIAL_PORTS) > 0 else None
-            srcStr = sys.argv[argIdx] if argIdx < len(sys.argv) else None
-            if srcStr and srcStr.startswith("--"):  # use next arg as src file (optional)
-                srcStr = None                       #  unless arg is switch param
-            successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
-            sys.exit(0 if successFlag else 1)
-        print("Unrecognized command-line argument(s): {0}".format(sys.argv[1:]))
-        sys.exit(1)
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument('--version', '-v', action='version', version=RELEASE_VERSION)
+arg_parser.add_argument('--config', '-c', action='store', metavar='file_name', default=Config.FILE_NAME, help='use this configuration file')
+arg_parser.add_argument('--ziplogs', action='store_true', help='zip log files')
+arg_parser.add_argument('--jumptobl', action='store_true', help='jump to bootloader')
+arg_parser.add_argument('--flashbpill', action='store', nargs='?', metavar='source', const=stm32loader.DEF_BINSRC_STR, help='flash an STM32 BluePill processor')
+
+args = arg_parser.parse_args(None if __name__ == '__main__' else [])
+config_file_name = args.config;
+rhconfig = Config()
+rhconfig.load(config_file_name)
+if args.ziplogs:
+    log.create_log_files_zip(logger, config_file_name, DB_FILE_NAME)
+    sys.exit(0)
+if not args.jumptobl:  # handle jump-to-bootloader argument later
+    if args.flashbpill:
+        portStr = rhconfig.SERIAL_PORTS[0] if rhconfig.SERIAL_PORTS and \
+                                            len(rhconfig.SERIAL_PORTS) > 0 else None
+        srcStr = args.flashbpill
+        successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
+        sys.exit(0 if successFlag else 1)
+
+logger.info('RotorHazard v{0}'.format(RELEASE_VERSION))
 
 TEAM_NAMES_LIST = [str(unichr(i)) for i in range(65, 91)]  # list of 'A' to 'Z' strings
 
@@ -131,11 +133,11 @@ DB.init_app(APP)
 DB.app = APP
 
 # start SocketIO service
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=Config.GENERAL['CORS_ALLOWED_HOSTS'])
+SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=rhconfig.GENERAL['CORS_ALLOWED_HOSTS'])
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.
-Current_log_path_name = log.later_stage_setup(Config.LOGGING, SOCKET_IO)
+Current_log_path_name = log.later_stage_setup(rhconfig.LOGGING, SOCKET_IO)
 
 INTERFACE = None  # initialized later
 SENSORS = Sensors()
@@ -198,8 +200,8 @@ def catchLogExcDBCloseWrapper(func):
 #  then return default value based on BASEDIR and server RELEASE_VERSION
 def getDefNodeFwUpdateUrl():
     try:
-        if Config.GENERAL['DEF_NODE_FWUPDATE_URL']:
-            return Config.GENERAL['DEF_NODE_FWUPDATE_URL']
+        if rhconfig.GENERAL['DEF_NODE_FWUPDATE_URL']:
+            return rhconfig.GENERAL['DEF_NODE_FWUPDATE_URL']
         if RELEASE_VERSION.lower().find("dev") > 0:  # if "dev" server version then
             retStr = stm32loader.DEF_BINSRC_STR      # use current "dev" firmware at URL
         else:
@@ -309,7 +311,7 @@ class RHRaceFormat():
 
 def check_auth(username, password):
     '''Check if a username password combination is valid.'''
-    return username == Config.GENERAL['ADMIN_USERNAME'] and password == Config.GENERAL['ADMIN_PASSWORD']
+    return username == rhconfig.GENERAL['ADMIN_USERNAME'] and password == rhconfig.GENERAL['ADMIN_PASSWORD']
 
 def authenticate():
     '''Sends a 401 response that enables basic auth.'''
@@ -319,7 +321,7 @@ def authenticate():
         {'WWW-Authenticate': 'Basic realm="Login Required"'})
 
 def requires_auth(f):
-    @wraps(f)
+    @functools.wraps(f)
     def decorated(*args, **kwargs):
         auth = request.authorization
         if not auth or not check_auth(auth.username, auth.password):
@@ -344,7 +346,7 @@ def render_template(template_name_or_list, **context):
 def render_index():
     '''Route to home page.'''
     return render_template('home.html', serverInfo=serverInfo,
-                           getOption=RHData.get_option, __=__, Debug=Config.GENERAL['DEBUG'])
+                           getOption=RHData.get_option, __=__, Debug=rhconfig.GENERAL['DEBUG'])
 
 @APP.route('/event')
 def render_event():
@@ -354,7 +356,7 @@ def render_event():
 @APP.route('/results')
 def render_results():
     '''Route to round summary page.'''
-    return render_template('results.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__, Debug=Config.GENERAL['DEBUG'])
+    return render_template('results.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__, Debug=rhconfig.GENERAL['DEBUG'])
 
 @APP.route('/run')
 @requires_auth
@@ -418,9 +420,9 @@ def render_settings():
             message += item['message']
             message += '</li>'
             server_messages_formatted += message
-    if Config.GENERAL['configFile'] == -1:
+    if rhconfig.GENERAL['configFile'] == 'error':
         server_messages_formatted += '<li class="config config-bad warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('The config.json file is invalid. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') + '</li>'
-    elif Config.GENERAL['configFile'] == 0:
+    elif rhconfig.GENERAL['configFile'] == 'defaults':
         server_messages_formatted += '<li class="config config-none warning"><strong>' + __('Warning') + ': ' + '</strong>' + __('No configuration file was loaded. Falling back to default configuration.') + '<br />' + __('See <a href="/docs?d=User Guide.md#set-up-config-file">User Guide</a> for more information.') +'</li>'
 
     return render_template('settings.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
@@ -432,7 +434,7 @@ def render_settings():
         cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()),
         node_fw_updatable=(INTERFACE.get_fwupd_serial_name()!=None),
         is_raspberry_pi=RHUtils.isSysRaspberryPi(),
-        Debug=Config.GENERAL['DEBUG'])
+        Debug=rhconfig.GENERAL['DEBUG'])
 
 @APP.route('/streams')
 def render_stream():
@@ -533,7 +535,7 @@ def render_vrxstatus():
 def render_viewDocs():
     '''Route to doc viewer.'''
 
-    folderBase = '../../doc/'
+    folderBase = '../doc/'
 
     try:
         docfile = request.args.get('d')
@@ -656,7 +658,7 @@ def on_get_version():
 @SOCKET_IO.on('get_timestamp')
 @catchLogExceptionsWrapper
 def on_get_timestamp():
-    if RACE.race_status == RaceStatus.STAGING:
+    if RACE.race_status == RHRace.RaceStatus.STAGING:
         now = RACE.start_time_monotonic
     else:
         now = monotonic()
@@ -952,16 +954,6 @@ def hardware_set_all_frequencies(freqs):
             'channel': freqs["c"][idx]
             })
 
-@catchLogExceptionsWrapper
-def restore_node_frequency(node_index):
-    ''' Restore frequency for given node index (update hardware) '''
-    gevent.sleep(0.250)  # pause to get clear of heartbeat actions for scanner
-    profile = getCurrentProfile()
-    profile_freqs = json.loads(profile.frequencies)
-    freq = profile_freqs["f"][node_index]
-    INTERFACE.set_frequency(node_index, freq)
-    logger.info('Frequency restored: Node {0} Frequency {1}'.format(node_index+1, freq))
-
 @SOCKET_IO.on('set_enter_at_level')
 @catchLogExceptionsWrapper
 def on_set_enter_at_level(data):
@@ -1104,19 +1096,9 @@ def on_cap_exit_at_btn(data):
 @catchLogExceptionsWrapper
 def on_set_scan(data):
     node_index = data['node']
-    minScanFreq = data['min_scan_frequency']
-    maxScanFreq = data['max_scan_frequency']
-    maxScanInterval = data['max_scan_interval']
-    minScanInterval = data['min_scan_interval']
-    scanZoom = data['scan_zoom']
-    node = INTERFACE.nodes[node_index]
-    node.set_scan_interval(minScanFreq, maxScanFreq, maxScanInterval, minScanInterval, scanZoom)
-    if node.scan_enabled:
-        HEARTBEAT_DATA_RATE_FACTOR = 50
-    else:
-        HEARTBEAT_DATA_RATE_FACTOR = 5
-        gevent.sleep(0.100)  # pause/spawn to get clear of heartbeat actions for scanner
-        gevent.spawn(restore_node_frequency, node_index)
+    scan_enabled = data['scan']
+    if hasattr(INTERFACE, 'set_frequency_scan'):
+        INTERFACE.set_frequency_scan(node_index, scan_enabled)
 
 @SOCKET_IO.on('add_heat')
 @catchLogExceptionsWrapper
@@ -1209,6 +1191,7 @@ def on_add_pilot():
     RHData.add_pilot()
 
     emit_pilot_data()
+    emit_heat_data()
 
 @SOCKET_IO.on('alter_pilot')
 @catchLogExceptionsWrapper
@@ -1491,8 +1474,8 @@ def on_reset_database(data):
         reset_current_laps()
         RHData.reset_raceFormats()
         setCurrentRaceFormat(RHData.get_first_raceFormat())
-    emit_heat_data()
     emit_pilot_data()
+    emit_heat_data()
     emit_race_format()
     emit_class_data()
     emit_current_laps()
@@ -1586,7 +1569,7 @@ def on_kill_server():
 @catchLogExceptionsWrapper
 def on_download_logs(data):
     '''Download logs (as .zip file).'''
-    zip_path_name = log.create_log_files_zip(logger, Config.CONFIG_FILE_NAME, DB_FILE_NAME)
+    zip_path_name = log.create_log_files_zip(logger, config_file_name, DB_FILE_NAME)
     RHUtils.checkSetFileOwnerPi(log.LOGZIP_DIR_NAME)
     if zip_path_name:
         RHUtils.checkSetFileOwnerPi(zip_path_name)
@@ -1638,7 +1621,7 @@ def on_set_min_lap_behavior(data):
 @catchLogExceptionsWrapper
 def on_set_race_format(data):
     ''' set current race_format '''
-    if RACE.race_status == RaceStatus.READY: # prevent format change if race running
+    if RACE.race_status == RHRace.RaceStatus.READY: # prevent format change if race running
         race_format_val = data['race_format']
         race_format = RHData.get_raceFormat(race_format_val)
         setCurrentRaceFormat(race_format)
@@ -1697,7 +1680,7 @@ def on_delete_race_format():
         setCurrentRaceFormat(first_raceFormat)
         emit_race_format()
     else:
-        if RACE.race_status == RaceStatus.READY:
+        if RACE.race_status == RHRace.RaceStatus.READY:
             emit_priority_message(__('Format deletion prevented: saved race exists with this format'), False, nobroadcast=True)
         else:
             emit_priority_message(__('Format deletion prevented by active race: Stop and save/discard laps'), False, nobroadcast=True)
@@ -1882,17 +1865,17 @@ def on_stage_race():
     CLUSTER.emitToSplits('stage_race')
     race_format = getCurrentRaceFormat()
 
-    if RACE.race_status != RaceStatus.READY:
+    if RACE.race_status != RHRace.RaceStatus.READY:
         if race_format is SECONDARY_RACE_FORMAT:  # if running as secondary timer
-            if RACE.race_status == RaceStatus.RACING:
+            if RACE.race_status == RHRace.RaceStatus.RACING:
                 return  # if race in progress then leave it be
             # if missed stop/discard message then clear current race
             logger.info("Forcing race clear/restart because running as secondary timer")
             on_discard_laps()
-        elif RACE.race_status == RaceStatus.DONE and not RACE.any_laps_recorded():
+        elif RACE.race_status == RHRace.RaceStatus.DONE and not RACE.any_laps_recorded():
             on_discard_laps()  # if no laps then allow restart
 
-    if RACE.race_status == RaceStatus.READY: # only initiate staging if ready
+    if RACE.race_status == RHRace.RaceStatus.READY: # only initiate staging if ready
         '''Common race start events (do early to prevent processing delay when start is called)'''
 
         if heat_data.class_id != RHUtils.CLASS_ID_NONE:
@@ -1906,8 +1889,8 @@ def on_stage_race():
         init_node_cross_fields()  # set 'cur_pilot_id' and 'cross' fields on nodes
         RACE.last_race_cacheStatus = Results.CacheStatus.INVALID # invalidate last race results cache
         RACE.timer_running = False # indicate race timer not running
-        RACE.race_status = RaceStatus.STAGING
-        RACE.win_status = WinStatus.NONE
+        RACE.race_status = RHRace.RaceStatus.STAGING
+        RACE.win_status = RHRace.WinStatus.NONE
         RACE.status_message = ''
         RACE.any_races_started = True
 
@@ -1919,7 +1902,7 @@ def on_stage_race():
                 else:
                     RACE.node_has_finished[heatNode.node_index] = None
 
-        INTERFACE.set_race_status(RaceStatus.STAGING)
+        INTERFACE.set_race_status(RHRace.RaceStatus.STAGING)
         emit_current_laps() # Race page, blank laps to the web client
         emit_current_leaderboard() # Race page, blank leaderboard to the web client
         emit_race_status()
@@ -2096,7 +2079,7 @@ def race_start_thread(start_token):
     while (monotonic() < RACE.start_time_monotonic - 0.5):
         gevent.sleep(0.1)
 
-    if RACE.race_status == RaceStatus.STAGING and \
+    if RACE.race_status == RHRace.RaceStatus.STAGING and \
         RACE.start_token == start_token:
         # Only start a race if it is not already in progress
         # Null this thread if token has changed (race stopped/started quickly)
@@ -2127,8 +2110,8 @@ def race_start_thread(start_token):
                            format(node.index+1, node.current_rssi, node.enter_at_level, node.exit_at_level))
                 INTERFACE.force_end_crossing(node.index)
 
-        RACE.race_status = RaceStatus.RACING # To enable registering passed laps
-        INTERFACE.set_race_status(RaceStatus.RACING)
+        RACE.race_status = RHRace.RaceStatus.RACING # To enable registering passed laps
+        INTERFACE.set_race_status(RHRace.RaceStatus.RACING)
         RACE.timer_running = True # indicate race timer is running
         RACE.laps_winner_name = None  # name of winner in first-to-X-laps race
         RACE.winning_lap_id = 0  # track winning lap-id if race tied during first-to-X-laps race
@@ -2148,7 +2131,7 @@ def race_expire_thread(start_token):
     if race_format and race_format.race_mode == 0: # count down
         gevent.sleep(race_format.race_time_sec)
         # if race still in progress and is still same race
-        if RACE.race_status == RaceStatus.RACING and RACE.start_token == start_token:
+        if RACE.race_status == RHRace.RaceStatus.RACING and RACE.start_token == start_token:
             logger.info("Race count-down timer reached expiration")
             RACE.timer_running = False # indicate race timer no longer running
             Events.trigger(Evt.RACE_FINISH)
@@ -2163,7 +2146,7 @@ def on_stop_race():
     global RACE
 
     CLUSTER.emitToSplits('stop_race')
-    if RACE.race_status == RaceStatus.RACING:
+    if RACE.race_status == RHRace.RaceStatus.RACING:
         RACE.end_time = monotonic() # Update the race end time stamp
         delta_time = RACE.end_time - RACE.start_time_monotonic
         milli_sec = delta_time * 1000.0
@@ -2178,8 +2161,8 @@ def on_stop_race():
         if len(min_laps_list) > 0:
             logger.info('Nodes with laps under minimum:  ' + ', '.join(min_laps_list))
 
-        RACE.race_status = RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
-        INTERFACE.set_race_status(RaceStatus.DONE)
+        RACE.race_status = RHRace.RaceStatus.DONE # To stop registering passed laps, waiting for laps to be cleared
+        INTERFACE.set_race_status(RHRace.RaceStatus.DONE)
         Events.trigger(Evt.RACE_STOP, {
             'color': ColorVal.RED
         })
@@ -2190,8 +2173,8 @@ def on_stop_race():
 
     else:
         logger.debug('No active race to stop')
-        RACE.race_status = RaceStatus.READY # Go back to ready state
-        INTERFACE.set_race_status(RaceStatus.READY)
+        RACE.race_status = RHRace.RaceStatus.READY # Go back to ready state
+        INTERFACE.set_race_status(RHRace.RaceStatus.READY)
         Events.trigger(Evt.LAPS_CLEAR)
         delta_time = 0
 
@@ -2366,12 +2349,12 @@ def on_discard_laps(**kwargs):
     global RACE
     CLUSTER.emitToSplits('discard_laps')
     clear_laps()
-    RACE.race_status = RaceStatus.READY # Flag status as ready to start next race
-    INTERFACE.set_race_status(RaceStatus.READY)
+    RACE.race_status = RHRace.RaceStatus.READY # Flag status as ready to start next race
+    INTERFACE.set_race_status(RHRace.RaceStatus.READY)
     emit_current_laps() # Race page, blank laps to the web client
     emit_current_leaderboard() # Race page, blank leaderboard to the web client
     emit_race_status() # Race page, to set race button states
-    RACE.win_status = WinStatus.NONE
+    RACE.win_status = RHRace.WinStatus.NONE
     RACE.status_message = ''
     check_emit_race_status_message(RACE) # Update race status message
 
@@ -2489,7 +2472,7 @@ def generate_heats(data):
 
             results['by_race_time'].append(entry)
 
-        win_condition = WinCondition.NONE
+        win_condition = RHRace.WinCondition.NONE
         cacheStatus = Results.CacheStatus.VALID
     else:
         race_class = RHData.get_raceClass(input_class)
@@ -2499,7 +2482,7 @@ def generate_heats(data):
             win_condition = race_format.win_condition
             cacheStatus = race_class.cacheStatus
         else:
-            win_condition = WinCondition.NONE
+            win_condition = RHRace.WinCondition.NONE
             cacheStatus = Results.CacheStatus.VALID
             logger.info('Unable to fetch format from race class {0}'.format(input_class))
 
@@ -2517,7 +2500,7 @@ def generate_heats(data):
         time_now = monotonic()
 
     if cacheStatus == Results.CacheStatus.VALID:
-        if win_condition == WinCondition.NONE:
+        if win_condition == RHRace.WinCondition.NONE:
 
             leaderboard = random.sample(results['by_race_time'], len(results['by_race_time']))
         else:
@@ -2885,6 +2868,11 @@ def emit_environmental_data(**params):
     else:
         SOCKET_IO.emit('environmental_data', emit_payload)
 
+def emit_scan_data(node):
+    freqs = sorted(node.scan_data)
+    rssis = [node.scan_data[freq] for freq in freqs]
+    SOCKET_IO.emit('scan_data', {'node' : node.index, 'frequency' : freqs, 'rssi' : rssis})
+
 def emit_enter_and_exit_at_levels(**params):
     '''Emits enter-at and exit-at levels for nodes.'''
     profile = getCurrentProfile()
@@ -3055,7 +3043,7 @@ def emit_current_laps(**params):
             for idx, lap in enumerate(RACE.node_laps[node]):
                 if not lap['deleted']:
                     lap_number = lap['lap_number'];
-                    if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                    if race_format and race_format.start_behavior == RHRace.StartBehavior.FIRST_LAP:
                         lap_number += 1
 
                     splits = get_splits(node, lap['lap_number'], True)
@@ -3352,23 +3340,31 @@ def emit_pilot_data(**params):
 
         pilot_data = {
             'pilot_id': pilot.id,
-            'callsign': pilot.callsign,
             'team': pilot.team,
             'phonetic': pilot.phonetic,
-            'name': pilot.name,
             'team_options': opts_str,
             'locked': locked,
         }
+
+        if pilot.url:
+            pilot_web_data = web.get_pilot_data(pilot.url)
+            pilot_data.update(pilot_web_data)
+
+        # local overrides
+        if pilot.name:
+            pilot_data['name'] = pilot.name
+        if pilot.callsign:
+            pilot_data['callsign'] = pilot.callsign
 
         if led_manager.isEnabled():
             pilot_data['color'] = pilot.color
 
         pilots_list.append(pilot_data)
 
-        if RHData.get_option('pilotSort') == 'callsign':
-            pilots_list.sort(key=lambda x: (x['callsign'], x['name']))
-        else:
-            pilots_list.sort(key=lambda x: (x['name'], x['callsign']))
+    if RHData.get_option('pilotSort') == 'callsign':
+        pilots_list.sort(key=lambda x: (x['callsign'], x['name']))
+    else:
+        pilots_list.sort(key=lambda x: (x['name'], x['callsign']))
 
     emit_payload = {
         'pilots': pilots_list
@@ -3379,8 +3375,6 @@ def emit_pilot_data(**params):
         emit('pilot_data', emit_payload, broadcast=True, include_self=False)
     else:
         SOCKET_IO.emit('pilot_data', emit_payload)
-
-    emit_heat_data()
 
 def emit_current_heat(**params):
     '''Emits the current heat.'''
@@ -3790,6 +3784,13 @@ def heartbeat_thread_function():
                 heartbeat_thread_function.imdtabler_flag = False
                 emit_imdtabler_rating()
 
+            scanners = [node for node in INTERFACE.nodes if node.scan_enabled]
+            if scanners:
+                SCANNER_UPDATE_FACTOR = 2
+                scan_counter = heartbeat_thread_function.iter_tracker % (SCANNER_UPDATE_FACTOR*len(scanners))
+                if (scan_counter % SCANNER_UPDATE_FACTOR) == 1:
+                    emit_scan_data(scanners[scan_counter//SCANNER_UPDATE_FACTOR])
+
             # emit rest of node data, but less often:
             if (heartbeat_thread_function.iter_tracker % (4*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
                 emit_node_data()
@@ -3799,19 +3800,19 @@ def heartbeat_thread_function():
                 emit_cluster_status()
 
             # collect vrx lock status
-            if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
+            if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 1:
                 if vrx_controller:
                     # if vrx_controller.has_connection
                     vrx_controller.get_seat_lock_status()
                     vrx_controller.request_variable_status()
 
-            if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 4:
+            if (heartbeat_thread_function.iter_tracker % (10*HEARTBEAT_DATA_RATE_FACTOR)) == 5:
                 # emit display status with offset
                 if vrx_controller:
                     emit_vrx_list()
 
             # emit environment data less often:
-            if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 0:
+            if (heartbeat_thread_function.iter_tracker % (20*HEARTBEAT_DATA_RATE_FACTOR)) == 2:
                 SENSORS.update_environmental_data()
                 emit_environmental_data()
 
@@ -3825,7 +3826,7 @@ def heartbeat_thread_function():
 
             # if any comm errors then log them (at defined intervals; faster if debug mode)
             if time_now > heartbeat_thread_function.last_error_rep_time + \
-                        (ERROR_REPORT_INTERVAL_SECS if not Config.GENERAL['DEBUG'] \
+                        (ERROR_REPORT_INTERVAL_SECS if not rhconfig.GENERAL['DEBUG'] \
                         else ERROR_REPORT_INTERVAL_SECS/10):
                 heartbeat_thread_function.last_error_rep_time = time_now
                 rep_str = INTERFACE.get_intf_error_report_str()
@@ -3904,7 +3905,7 @@ def ms_from_program_start():
     return milli_sec
 
 def check_emit_race_status_message(RACE, **params):
-    if RACE.win_status not in [WinStatus.DECLARED, WinStatus.TIE]: # don't call after declared result
+    if RACE.win_status not in [RHRace.WinStatus.DECLARED, RHRace.WinStatus.TIE]: # don't call after declared result
         emit_race_status_message(**params)
 
 @catchLogExcDBCloseWrapper
@@ -3925,8 +3926,8 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
     profile_freqs = json.loads(getCurrentProfile().frequencies)
     if profile_freqs["f"][node.index] != RHUtils.FREQUENCY_ID_NONE:
         # always count laps if race is running, otherwise test if lap should have counted before race end (RACE.duration_ms is invalid while race is in progress)
-        if RACE.race_status is RaceStatus.RACING \
-            or (RACE.race_status is RaceStatus.DONE and \
+        if RACE.race_status is RHRace.RaceStatus.RACING \
+            or (RACE.race_status is RHRace.RaceStatus.DONE and \
                 lap_timestamp_absolute < RACE.end_time):
 
             # Get the current pilot id on the node
@@ -4009,13 +4010,13 @@ def pass_record_callback(node, lap_ts_ref, source, race_start_ts_ref=None):
                         if lap_number == 0:
                             emit_first_pass_registered(node.index) # play first-pass sound
 
-                        if race_format and race_format.start_behavior == StartBehavior.FIRST_LAP:
+                        if race_format and race_format.start_behavior == RHRace.StartBehavior.FIRST_LAP:
                             lap_number += 1
 
                         # announce lap
                         if lap_number > 0:
-                            check_leader = race_format.win_condition != WinCondition.NONE and \
-                                           RACE.win_status != WinStatus.DECLARED
+                            check_leader = race_format.win_condition != RHRace.WinCondition.NONE and \
+                                           RACE.win_status != RHRace.WinStatus.DECLARED
                             if RACE.format.team_racing_mode:
                                 team = RHData.get_pilot(pilot_id).team
                                 team_data = RACE.team_results['meta']['teams'][team]
@@ -4058,7 +4059,7 @@ def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
         race_format = RACE.format
         RACE.win_status = win_status['status']
 
-        if win_status['status'] == WinStatus.DECLARED:
+        if win_status['status'] == RHRace.WinStatus.DECLARED:
             # announce winner
             if race_format.team_racing_mode:
                 RACE.status_message = __('Winner is') + ' ' + __('Team') + ' ' + win_status['data']['name']
@@ -4080,13 +4081,13 @@ def check_win_condition(RACE, RHData, INTERFACE, **kwargs):
                 'results': RACE.results
                 })
 
-        elif win_status['status'] == WinStatus.TIE:
+        elif win_status['status'] == RHRace.WinStatus.TIE:
             # announce tied
             if win_status['status'] != previous_win_status:
                 RACE.status_message = __('Race Tied')
                 emit_race_status_message()
                 emit_phonetic_text(RACE.status_message, 'race_winner')
-        elif win_status['status'] == WinStatus.OVERTIME:
+        elif win_status['status'] == RHRace.WinStatus.OVERTIME:
             # announce overtime
             if win_status['status'] != previous_win_status:
                 RACE.status_message = __('Race Tied: Overtime')
@@ -4125,7 +4126,7 @@ def node_crossing_callback(node):
     emit_node_crossing_change(node)
     # handle LED gate-status indicators:
 
-    if RACE.race_status == RaceStatus.RACING:  # if race is in progress
+    if RACE.race_status == RHRace.RaceStatus.RACING:  # if race is in progress
         # if pilot assigned to node and first crossing is complete
         if getCurrentRaceFormat() is SECONDARY_RACE_FORMAT or (
             node.current_pilot_id != RHUtils.PILOT_ID_NONE and node.first_cross_flag):
@@ -4265,8 +4266,8 @@ def init_race_state():
 def init_interface_state(startup=False):
     # Cancel current race
     if startup:
-        RACE.race_status = RaceStatus.READY # Go back to ready state
-        INTERFACE.set_race_status(RaceStatus.READY)
+        RACE.race_status = RHRace.RaceStatus.READY # Go back to ready state
+        INTERFACE.set_race_status(RHRace.RaceStatus.READY)
         Events.trigger(Evt.LAPS_CLEAR)
         RACE.timer_running = False # indicate race timer not running
         RACE.scheduled = False # also stop any deferred start
@@ -4296,7 +4297,7 @@ def init_LED_effects():
         LEDEvent.IDLE_READY: "clear",
         LEDEvent.IDLE_RACING: "clear",
     }
-    if "bitmapRHLogo" in led_manager.getRegisteredEffects() and Config.LED['LED_ROWS'] > 1:
+    if "bitmapRHLogo" in led_manager.getRegisteredEffects() and rhconfig.LED['LED_ROWS'] > 1:
         effects[Evt.STARTUP] = "bitmapRHLogo"
         effects[Evt.RACE_STAGE] = "bitmapOrangeEllipsis"
         effects[Evt.RACE_START] = "bitmapGreenArrow"
@@ -4314,7 +4315,7 @@ def init_LED_effects():
 
 def initVRxController():
     try:
-        vrx_config = Config.VRX_CONTROL
+        vrx_config = rhconfig.VRX_CONTROL
         try:
             vrx_enabled = vrx_config["ENABLED"]
             if vrx_enabled:
@@ -4335,7 +4336,7 @@ def initVRxController():
         return None
 
     # If got through import success, create the VRxController object
-    vrx_config = Config.VRX_CONTROL
+    vrx_config = rhconfig.VRX_CONTROL
     return VRxController(
         RHData,
         Events,
@@ -4445,13 +4446,13 @@ def initialize_hardware_interface():
         try:
             logger.debug("Initializing interface module: " + rh_interface_name)
             interfaceModule = importlib.import_module(rh_interface_name)
-            INTERFACE = interfaceModule.get_hardware_interface(config=Config, \
+            INTERFACE = interfaceModule.get_hardware_interface(config=rhconfig, \
                             isS32BPillFlag=RHGPIO.isS32BPillBoard(), **hardwareHelpers)
             # if no nodes detected, system is RPi, not S32_BPill, and no serial port configured
             #  then check if problem is 'smbus2' or 'gevent' lib not installed
             if INTERFACE and ((not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0) and \
                         RHUtils.isSysRaspberryPi() and (not RHGPIO.isS32BPillBoard()) and \
-                        ((not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0):
+                        ((not rhconfig.SERIAL_PORTS) or len(rhconfig.SERIAL_PORTS) <= 0):
                 try:
                     importlib.import_module('smbus2')
                     importlib.import_module('gevent')
@@ -4472,9 +4473,9 @@ def initialize_hardware_interface():
         except (ImportError, RuntimeError, IOError) as ex:
             logger.info('Unable to initialize nodes via ' + rh_interface_name + ':  ' + str(ex))
         if (not INTERFACE) or (not INTERFACE.nodes) or len(INTERFACE.nodes) <= 0:
-            if (not Config.SERIAL_PORTS) or len(Config.SERIAL_PORTS) <= 0:
+            if (not rhconfig.SERIAL_PORTS) or len(rhconfig.SERIAL_PORTS) <= 0:
                 interfaceModule = importlib.import_module('interface.MockInterface')
-                INTERFACE = interfaceModule.get_hardware_interface(config=Config, **hardwareHelpers)
+                INTERFACE = interfaceModule.get_hardware_interface(config=rhconfig, **hardwareHelpers)
                 for node in INTERFACE.nodes:  # put mock nodes at latest API level
                     node.api_level = NODE_API_BEST
                 set_ui_message(
@@ -4486,12 +4487,12 @@ def initialize_hardware_interface():
             else:
                 try:
                     importlib.import_module('serial')
-                    logger.info("Unable to initialize specified serial node(s): {0}".format(Config.SERIAL_PORTS))
+                    logger.info("Unable to initialize specified serial node(s): {0}".format(rhconfig.SERIAL_PORTS))
                     if INTERFACE:
                         logger.info("If an S32_BPill board is connected, its processor may need to be flash-updated")
                         # enter serial port name so it's available for node firmware update
                         if getattr(INTERFACE, "set_mock_fwupd_serial_obj"):
-                            INTERFACE.set_mock_fwupd_serial_obj(Config.SERIAL_PORTS[0])
+                            INTERFACE.set_mock_fwupd_serial_obj(rhconfig.SERIAL_PORTS[0])
                             set_ui_message(
                                 'stm32',
                                  __("Server is unable to communicate with node processor.") +
@@ -4626,7 +4627,7 @@ RHUtils.idAndLogSystemInfo()
 
 determineHostAddress(2)  # attempt to determine IP address, but don't wait too long for it
 
-if (not RHGPIO.isS32BPillBoard()) and Config.GENERAL['FORCE_S32_BPILL_FLAG']:
+if (not RHGPIO.isS32BPillBoard()) and rhconfig.GENERAL['FORCE_S32_BPILL_FLAG']:
     RHGPIO.setS32BPillBoardFlag()
     logger.info("Set S32BPillBoardFlag in response to FORCE_S32_BPILL_FLAG in config")
 
@@ -4642,7 +4643,6 @@ if RHUtils.isSysRaspberryPi() and not RHGPIO.isRealRPiGPIO():
         )
 
 # log results of module initializations
-Config.logInitResultMessage()
 Language.logInitResultMessage()
 
 # check if current log file owned by 'root' and change owner to 'pi' user if so
@@ -4654,15 +4654,15 @@ logger.info("Using log file: {0}".format(Current_log_path_name))
 
 if RHUtils.isSysRaspberryPi() and RHGPIO.isS32BPillBoard():
     try:
-        if Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN']:
+        if rhconfig.GENERAL['SHUTDOWN_BUTTON_GPIOPIN']:
             logger.debug("Configuring shutdown-button handler, pin={}, delayMs={}".format(\
-                         Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'], \
-                         Config.GENERAL['SHUTDOWN_BUTTON_DELAYMS']))
+                         rhconfig.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'], \
+                         rhconfig.GENERAL['SHUTDOWN_BUTTON_DELAYMS']))
             ShutdownButtonInputHandler = ButtonInputHandler(
-                            Config.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'], logger, \
+                            rhconfig.GENERAL['SHUTDOWN_BUTTON_GPIOPIN'], logger, \
                             shutdown_button_pressed, shutdown_button_released, \
                             shutdown_button_long_press,
-                            Config.GENERAL['SHUTDOWN_BUTTON_DELAYMS'], False)
+                            rhconfig.GENERAL['SHUTDOWN_BUTTON_DELAYMS'], False)
             start_shutdown_button_thread()
     except Exception:
         logger.exception("Error setting up shutdown-button handler")
@@ -4677,7 +4677,7 @@ hardwareHelpers = {}
 for helper in search_modules(helper_pkg, suffix='helper'):
     helper_key = helper.__name__[len(helper_pkg.__name__)+1:]
     try:
-        hardwareHelpers[helper_key] = helper.create(Config)
+        hardwareHelpers[helper_key] = helper.create(rhconfig)
     except Exception as ex:
         logger.warning("Unable to create hardware helper '{0}':  {1}".format(helper.__name__, ex))
 
@@ -4686,16 +4686,13 @@ if not resultFlag:
     log.wait_for_queue_empty()
     sys.exit(1)
 
-if len(sys.argv) > 0 and CMDARG_JUMP_TO_BL_STR in sys.argv:
+if args.jumptobl:
     stop_background_threads()
     jump_to_node_bootloader()
-    if CMDARG_FLASH_BPILL_STR in sys.argv:
-        argIdx = sys.argv.index(CMDARG_FLASH_BPILL_STR) + 1
-        portStr = Config.SERIAL_PORTS[0] if Config.SERIAL_PORTS and \
-                                            len(Config.SERIAL_PORTS) > 0 else None
-        srcStr = sys.argv[argIdx] if argIdx < len(sys.argv) else None
-        if srcStr and srcStr.startswith("--"):  # use next arg as src file (optional)
-            srcStr = None                       #  unless arg is switch param
+    if args.flashbpill:
+        portStr = rhconfig.SERIAL_PORTS[0] if rhconfig.SERIAL_PORTS and \
+                                            len(rhconfig.SERIAL_PORTS) > 0 else None
+        srcStr = args.flashbpill
         successFlag = stm32loader.flash_file_to_stm32(portStr, srcStr)
         sys.exit(0 if successFlag else 1)
     sys.exit(0)
@@ -4703,7 +4700,7 @@ if len(sys.argv) > 0 and CMDARG_JUMP_TO_BL_STR in sys.argv:
 CLUSTER = ClusterNodeSet(Language)
 hasMirrors = False
 try:
-    for index, secondary_info in enumerate(Config.GENERAL['SECONDARIES']):
+    for index, secondary_info in enumerate(rhconfig.GENERAL['SECONDARIES']):
         if isinstance(secondary_info, string_types):
             secondary_info = {'address': secondary_info, 'mode': SecondaryNode.SPLIT_MODE}
         if 'address' not in secondary_info:
@@ -4712,7 +4709,7 @@ try:
         secondary_info['address'] = RHUtils.substituteAddrWildcards(determineHostAddress, \
                                                                 secondary_info['address'])
         if 'timeout' not in secondary_info:
-            secondary_info['timeout'] = Config.GENERAL['SECONDARY_TIMEOUT']
+            secondary_info['timeout'] = rhconfig.GENERAL['SECONDARY_TIMEOUT']
         if 'mode' in secondary_info and str(secondary_info['mode']) == SecondaryNode.MIRROR_MODE:
             hasMirrors = True
         elif hasMirrors:
@@ -4755,7 +4752,7 @@ else:
 # Delay to get I2C addresses through interface class initialization
 gevent.sleep(0.500)
 
-SENSORS.discover(sensor_pkg, config=Config.SENSORS, **hardwareHelpers)
+SENSORS.discover(sensor_pkg, config=rhconfig.SENSORS, **hardwareHelpers)
 
 # if no DB file then create it now (before "__()" fn used in 'buildServerInfo()')
 db_inited_flag = False
@@ -4844,7 +4841,7 @@ SECONDARY_RACE_FORMAT = RHRaceFormat(name=__("Secondary"),
                          start_delay_max=0,
                          staging_tones=0,
                          number_laps_win=0,
-                         win_condition=WinCondition.NONE,
+                         win_condition=RHRace.WinCondition.NONE,
                          team_racing_mode=False,
                          start_behavior=0)
 
@@ -4871,7 +4868,7 @@ else:
 
 # Create LED object with appropriate configuration
 strip = None
-if Config.LED['LED_COUNT'] > 0:
+if rhconfig.LED['LED_COUNT'] > 0:
     led_type = os.environ.get('RH_LEDS', 'ws281x')
     # note: any calls to 'RHData.get_option()' need to happen after the DB initialization,
     #       otherwise it causes problems when run with no existing DB file
@@ -4879,17 +4876,17 @@ if Config.LED['LED_COUNT'] > 0:
     led_pkg_prefix = led_pkg.__name__ + '.'
     try:
         ledModule = importlib.import_module(led_pkg_prefix + led_type + '_leds')
-        strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+        strip = ledModule.get_pixel_interface(config=rhconfig.LED, brightness=led_brightness)
     except ImportError:
         # No hardware LED handler, the OpenCV emulation
         try:
             ledModule = importlib.import_module(led_pkg_prefix + 'cv2_leds')
-            strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+            strip = ledModule.get_pixel_interface(config=rhconfig.LED, brightness=led_brightness)
         except ImportError:
             # No OpenCV emulation, try console output
             try:
                 ledModule = importlib.import_module(led_pkg_prefix + 'ANSI_leds')
-                strip = ledModule.get_pixel_interface(config=Config.LED, brightness=led_brightness)
+                strip = ledModule.get_pixel_interface(config=rhconfig.LED, brightness=led_brightness)
             except ImportError:
                 ledModule = None
                 logger.info('LED: disabled (no modules available)')
@@ -4909,7 +4906,7 @@ elif CLUSTER and CLUSTER.hasRecEventsSecondaries():
 
 if led_manager:
     led_effects = Plugins(prefix='led_handler')
-    led_effects.discover(led_pkg)
+    led_effects.discover(led_pkg, config=rhconfig.LED)
     for led_effect in led_effects:
         led_manager.registerEffect(led_effect)
     init_LED_effects()
@@ -4930,15 +4927,15 @@ from . import json_endpoints
 
 APP.register_blueprint(json_endpoints.createBlueprint(RHData, Results, RACE, serverInfo, getCurrentProfile))
 
-if 'API_PORT' in Config.CHORUS and Config.CHORUS['API_PORT']:
+if 'API_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['API_PORT']:
     from .chorus_api import ChorusAPI
     import serial
 
-    chorusPort = Config.CHORUS['API_PORT']
+    chorusPort = rhconfig.CHORUS['API_PORT']
     chorusSerial = serial.Serial(port=chorusPort, baudrate=115200, timeout=0.1)
     CHORUS_API = ChorusAPI(chorusSerial, INTERFACE, SENSORS, connect_handler, on_stop_race, lambda : on_reset_auto_calibration({}))
 
-def start(port_val = Config.GENERAL['HTTP_PORT']):
+def start(port_val = rhconfig.GENERAL['HTTP_PORT']):
     if not RHData.get_option("secret_key"):
         RHData.set_option("secret_key", ''.join(random.choice(string.ascii_letters) for i in range(50)))
 
