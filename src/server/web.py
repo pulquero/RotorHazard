@@ -4,7 +4,7 @@ import re as regex
 
 @functools.lru_cache(maxsize=128)
 def get_pilot_data(url):
-    web_data = {'url': url}
+    web_data = {}
     if url.startswith('https://league.ifpv.co.uk/pilots/'):
         resp = requests.get(url)
         name_match = regex.search("<div class=\"row vertical-center\">\s+<div class=\"col-md-3\">\s+<h1>(.*)(?=<)</h1>\s+<p>(.*)(?=<)</p>", resp.text)
