@@ -50,7 +50,8 @@ from collections import OrderedDict
 from six import unichr, string_types
 
 from flask import Flask, send_file, request, Response, session, templating, redirect
-from flask_socketio import SocketIO, emit
+from flask_socketio import emit
+from .socketio import SOCKET_IO
 
 from . import Config, Database, Results, Language, \
     RHData, RHRace, RHUtils, PageCache, RHGPIO, \
@@ -134,7 +135,9 @@ Database.DB.init_app(APP)
 Database.DB.app = APP
 
 # start SocketIO service
-SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins=rhconfig.GENERAL['CORS_ALLOWED_HOSTS'])
+SOCKET_IO.server_options['async_mode'] = 'gevent'
+SOCKET_IO.server_options['cors_allowed_origins'] = rhconfig.GENERAL['CORS_ALLOWED_HOSTS']
+SOCKET_IO.init_app(APP)
 
 # this is the moment where we can forward log-messages to the frontend, and
 # thus set up logging for good.
@@ -161,6 +164,8 @@ PageCache = PageCache.PageCache(RHData, Events) # For storing page cache
 Language = Language.Language(RHData) # initialize language
 __ = Language.__ # Shortcut to translation function
 RHData.late_init(PageCache, Language) # Give RHData additional references
+
+APP.rhserver = vars()
 
 TONES_NONE = 0
 TONES_ONE = 1
@@ -1303,9 +1308,9 @@ def on_delete_class(data):
 
 @SOCKET_IO.on('add_pilot')
 @catchLogExceptionsWrapper
-def on_add_pilot():
+def on_add_pilot(data={}):
     '''Adds the next available pilot id number in the database.'''
-    RHData.add_pilot()
+    RHData.add_pilot(data)
 
     emit_pilot_data()
 
@@ -1400,7 +1405,7 @@ def on_set_profile(data, emit_vals=True):
         else: #handle null data by copying in hardware values
             enter_at_levels = {}
             enter_at_levels["v"] = [node.enter_at_level for node in INTERFACE.nodes]
-            RHData.alter_profile({'enter_ats': enter_at_levels})
+            RHData.alter_profile({'profile_id': profile_val, 'enter_ats': enter_at_levels})
             enter_ats = enter_at_levels["v"]
 
         if profile.exit_ats:
@@ -1411,7 +1416,7 @@ def on_set_profile(data, emit_vals=True):
         else: #handle null data by copying in hardware values
             exit_at_levels = {}
             exit_at_levels["v"] = [node.exit_at_level for node in INTERFACE.nodes]
-            RHData.alter_profile({'exit_ats': exit_at_levels})
+            RHData.alter_profile({'profile_id': profile_val, 'exit_ats': exit_at_levels})
             exit_ats = exit_at_levels["v"]
 
         Events.trigger(Evt.PROFILE_SET, {
@@ -2241,6 +2246,7 @@ def race_start_thread(start_token):
             pass
 
         # !!! RACE STARTS NOW !!!
+        RACE.start_time = datetime.now() # record standard-formatted time
 
         # do time-critical tasks
         Events.trigger(Evt.RACE_START, {
@@ -2249,7 +2255,6 @@ def race_start_thread(start_token):
             })
 
         # do secondary start tasks (small delay is acceptable)
-        RACE.start_time = datetime.now() # record standard-formatted time
 
         for node in INTERFACE.nodes:
             node.reset()
@@ -2990,7 +2995,8 @@ def emit_frequency_data(**params):
     profile_freqs = json.loads(getCurrentProfile().frequencies)
 
     fdata = []
-    for idx in range(len(profile_freqs["f"])):
+    num_freqs = min(RACE.num_nodes, len(profile_freqs["f"]))
+    for idx in range(num_freqs):
         fdata.append({
                 'band': profile_freqs["b"][idx],
                 'channel': profile_freqs["c"][idx],
@@ -3007,7 +3013,7 @@ def emit_frequency_data(**params):
         SOCKET_IO.emit('frequency_data', emit_payload)
 
         # send changes to LiveTime
-        for n in range(RACE.num_nodes):
+        for n in range(num_freqs):
             # if session.get('LiveTime', False):
             SOCKET_IO.emit('frequency_set', {
                 'node': n,
@@ -3569,8 +3575,17 @@ def emit_class_data(**params):
 
 def emit_pilot_data(**params):
     '''Emits pilot data.'''
+    pilot_objs = RHData.get_pilots()
+
+    # prefetch web data
+    web_gs = {}
+    for pilot in pilot_objs:
+        if pilot.url:
+            g = gevent.spawn(web.get_pilot_data, pilot.url)
+            web_gs[pilot.id] = g
+
     pilots_list = []
-    for pilot in RHData.get_pilots():
+    for pilot in pilot_objs:
         opts_str = '' # create team-options string for each pilot, with current team selected
         for name in TEAM_NAMES_LIST:
             opts_str += '<option value="' + name + '"'
@@ -3582,6 +3597,8 @@ def emit_pilot_data(**params):
 
         pilot_data = {
             'pilot_id': pilot.id,
+            'name': pilot.name,
+            'callsign': pilot.callsign,
             'url': pilot.url if pilot.url else '',
             'team': pilot.team,
             'phonetic': pilot.phonetic,
@@ -3590,13 +3607,14 @@ def emit_pilot_data(**params):
         }
 
         if pilot.url:
-            pilot_web_data = web.get_pilot_data(pilot.url)
+            gevent.wait([web_gs[pilot.id]])
+            pilot_web_data = web_gs[pilot.id].value
             pilot_data.update(pilot_web_data)
 
         # local overrides
-        if pilot.name:
+        if not pilot.name.startswith('~'):
             pilot_data['name'] = pilot.name
-        if pilot.callsign:
+        if not pilot.callsign.startswith('~'):
             pilot_data['callsign'] = pilot.callsign
 
         if led_manager.isEnabled():
