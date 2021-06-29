@@ -159,6 +159,9 @@ class BaseHardwareInterface:
                         gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
                     node.node_lap_id = lap_id
 
+    def calibrate_nodes(self, race_data):
+        pass
+
     #
     # External functions for setting data
     #
