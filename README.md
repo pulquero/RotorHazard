@@ -35,7 +35,7 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
 * Link pilots with their MultiGP or iFPV accounts.
 * Sensor alarms (for INA219, BME280, etc).
 * More host sensors for Linux/Windows systems.
-* Command line option to specify configuration and database files.
+* Command line option to specify configuration and database files (for further information, use python -m server.server -h).
 * Support for multiple I2C buses.
 * Software-in-the-loop node code.
 * Nodes-over-sockets.
