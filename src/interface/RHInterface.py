@@ -506,11 +506,11 @@ class RHInterface(BaseHardwareInterface):
     def set_race_status(self, race_status):
         super().set_race_status(race_status)
         if race_status == BaseHardwareInterface.RACE_STATUS_DONE:
-            gevent.spawn(self.calibrate_nodes)
+            gevent.spawn(self.auto_calibrate_nodes)
 
-    def calibrate_nodes(self):
+    def auto_calibrate_nodes(self):
         for node in self.nodes:
-            if node.autotune and (node.rhfeature_flags&RHFEAT_PH) and node.first_cross_flag and node.history_values:
+            if node.auto_calibrate and (node.rhfeature_flags&RHFEAT_PH) and node.first_cross_flag and node.history_values:
                 ccs = ph.calculatePeakPersistentHomology(node.history_values)
                 lo, hi = ph.findBreak(ccs)
                 diff = hi - lo
@@ -522,6 +522,9 @@ class RHInterface(BaseHardwareInterface):
                 logger.info('Calibrating node {}: break {}-{}, adjusting ({}, {}) to ({}, {})'.format(node.index, lo, hi, node.enter_at_level, node.exit_at_level, enter_level, exit_level))
                 self.set_enter_at_level(node.index, enter_level)
                 self.set_exit_at_level(node.index, exit_level)
+
+    def calibrate_nodes(self, race_data):
+        pass
 
     #
     # Internal helper functions for setting single values

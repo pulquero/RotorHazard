@@ -70,6 +70,7 @@ Events = EventManager()
 # LED imports
 from leds import Color, ColorVal, hexToColor
 from .led_event_manager import LEDEventManager, NoLEDManager, ClusterLEDManager, LEDEvent, ColorPattern
+from .audio_event_manager import AudioEventManager
 
 import helpers as helper_pkg
 import sensors as sensor_pkg
@@ -103,14 +104,20 @@ CMDARG_FLASH_BPILL_STR = '--flashbpill'  # flash firmware onto S32_BPill process
 
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument('--version', '-v', action='version', version=RELEASE_VERSION)
-arg_parser.add_argument('--config', '-c', action='store', metavar='file_name', default=Config.FILE_NAME, help='use this configuration file')
+arg_parser.add_argument('--config', '-c', action='store', metavar='file_name', help='use this configuration file')
 arg_parser.add_argument('--database', '-db', action='store', metavar='db_name', help='use this database (file name or URL)')
 arg_parser.add_argument('--ziplogs', action='store_true', help='zip log files')
 arg_parser.add_argument('--jumptobl', action='store_true', help='jump to bootloader')
 arg_parser.add_argument('--flashbpill', action='store', nargs='?', metavar='source', const=stm32loader.DEF_BINSRC_STR, help='flash an STM32 BluePill processor')
 
 args = arg_parser.parse_args(None if __name__ == '__main__' else [])
+
 config_file_name = args.config;
+if not config_file_name:
+    config_file_name = os.environ.get('RH_CONFIG')
+if not config_file_name:
+    config_file_name = Config.FILE_NAME
+
 rhconfig = Config()
 rhconfig.load(config_file_name)
 
@@ -177,10 +184,6 @@ __ = Language.__ # Shortcut to translation function
 RHData.late_init(PageCache, Language) # Give RHData additional references
 
 APP.rhserver = vars()
-
-TONES_NONE = 0
-TONES_ONE = 1
-TONES_ALL = 2
 
 ui_server_messages = {}
 def set_ui_message(mainclass, message, header=None, subclass=None):
@@ -1161,17 +1164,25 @@ def hardware_set_all_exit_ats(exit_at_levels):
                 'exit_at_level': INTERFACE.nodes[idx].exit_at_level
                 })
 
-@SOCKET_IO.on('set_autotune')
+@SOCKET_IO.on('set_calibration_mode')
 @catchLogExceptionsWrapper
-def on_set_autotune(data):
+def on_set_calibration_mode(data):
     node_index = data['node']
-    autotune = data['autotune']
+    if 'auto_calibrate' in data:
+        auto_calibrate = data['auto_calibrate']
+    
+        if node_index >= 0 or node_index < RACE.num_nodes:
+            INTERFACE.nodes[node_index].auto_calibrate = auto_calibrate
+        else:
+            logger.info('Unable to set auto calibration mode ({0}) on node {1}; node index out of range'.format(auto_calibrate, node_index+1))
 
-    if node_index < 0 or node_index >= RACE.num_nodes:
-        logger.info('Unable to set autotune ({0}) on node {1}; node index out of range'.format(autotune, node_index+1))
-        return
-
-    INTERFACE.nodes[node_index].autotune = autotune
+    if 'calibrate' in data:
+        calibrate = data['calibrate']
+    
+        if node_index >= 0 or node_index < RACE.num_nodes:
+            INTERFACE.nodes[node_index].calibrate = calibrate
+        else:
+            logger.info('Unable to set calibration mode ({0}) on node {1}; node index out of range'.format(auto_calibrate, node_index+1))
 
 @SOCKET_IO.on("set_start_thresh_lower_amount")
 @catchLogExceptionsWrapper
@@ -2244,6 +2255,15 @@ def race_start_thread(start_token):
                             .format(node.index+1, node.current_rssi, node.enter_at_level))
 
     # do non-blocking delay before time-critical code
+    time_remaining = RACE.start_time_monotonic - monotonic()
+    countdown_time = int(time_remaining)
+    for secs_remaining in range(countdown_time, 0, -1):
+        gevent.sleep(time_remaining - secs_remaining) # sleep until next whole second
+        evt_data = {'time_remaining': secs_remaining,
+                    'countdown_time': countdown_time}
+        Events.trigger(Evt.RACE_START_COUNTDOWN, evt_data)
+        time_remaining = RACE.start_time_monotonic - monotonic()
+
     while (monotonic() < RACE.start_time_monotonic - 0.5):
         gevent.sleep(0.1)
 
@@ -2371,71 +2391,74 @@ def on_save_laps():
     '''Save current laps data to the database.'''
 
     # Determine if race is empty
-    race_has_laps = False
-    for node_index in RACE.node_laps:
-        if RACE.node_laps[node_index]:
-            race_has_laps = True
-            break
+    # race_has_laps = False
+    # for node_index in RACE.node_laps:
+    #     if RACE.node_laps[node_index]:
+    #         race_has_laps = True
+    #         break
+    #
+    # if race_has_laps == True:
+    if CLUSTER:
+        CLUSTER.emitToSplits('save_laps')
+    PageCache.set_valid(False)
+    heat = RHData.get_heat(RACE.current_heat)
+    # Get the last saved round for the current heat
+    max_round = RHData.get_max_round(RACE.current_heat)
 
-    if race_has_laps == True:
-        PageCache.set_valid(False)
-        heat = RHData.get_heat(RACE.current_heat)
-        # Get the last saved round for the current heat
-        max_round = RHData.get_max_round(RACE.current_heat)
+    if max_round is None:
+        max_round = 0
+    # Loop through laps to copy to saved races
+    profile = getCurrentProfile()
+    profile_freqs = json.loads(profile.frequencies)
 
-        if max_round is None:
-            max_round = 0
-        # Loop through laps to copy to saved races
-        profile = getCurrentProfile()
-        profile_freqs = json.loads(profile.frequencies)
-
-        new_race_data = {
-            'round_id': max_round+1,
-            'heat_id': RACE.current_heat,
-            'class_id': heat.class_id,
-            'format_id': RHData.get_option('currentFormat'),
-            'start_time': RACE.start_time_monotonic,
-            'start_time_formatted': RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"),
-            }
-
-        new_race = RHData.add_savedRaceMeta(new_race_data)
-
-        race_data = {}
-
-        for node_index in range(RACE.num_nodes):
-            if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
-                pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
-
-                race_data[node_index] = {
-                    'race_id': new_race.id,
-                    'pilot_id': pilot_id,
-                    'history_values': json.dumps(INTERFACE.nodes[node_index].history_values),
-                    'history_times': json.dumps(INTERFACE.nodes[node_index].history_times),
-                    'enter_at': INTERFACE.nodes[node_index].enter_at_level,
-                    'exit_at': INTERFACE.nodes[node_index].exit_at_level,
-                    'laps': RACE.node_laps[node_index]
-                    }
-
-        RHData.add_race_data(race_data)
-
-        # spawn thread for updating results caches
-        cache_params = {
-            'race_id': new_race.id,
-            'heat_id': RACE.current_heat,
-            'round_id': new_race.round_id,
+    new_race_data = {
+        'round_id': max_round+1,
+        'heat_id': RACE.current_heat,
+        'class_id': heat.class_id,
+        'format_id': RHData.get_option('currentFormat'),
+        'start_time': RACE.start_time_monotonic,
+        'start_time_formatted': RACE.start_time.strftime("%Y-%m-%d %H:%M:%S"),
         }
-        gevent.spawn(build_atomic_result_caches, cache_params)
 
-        Events.trigger(Evt.LAPS_SAVE, {
-            'race_id': new_race.id,
-            })
+    new_race = RHData.add_savedRaceMeta(new_race_data)
 
-        logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
-        on_discard_laps(saved=True) # Also clear the current laps
-    else:
-        on_discard_laps()
-        message = __('Discarding empty race')
-        emit_priority_message(message, False, nobroadcast=True)
+    race_data = {}
+
+    for node_index in range(len(profile_freqs["f"])):
+        if profile_freqs["f"][node_index] != RHUtils.FREQUENCY_ID_NONE:
+            pilot_id = RHData.get_pilot_from_heatNode(RACE.current_heat, node_index)
+
+            race_data[node_index] = {
+                'race_id': new_race.id,
+                'pilot_id': pilot_id,
+                'history_values': json.dumps(INTERFACE.nodes[node_index].history_values),
+                'history_times': json.dumps(INTERFACE.nodes[node_index].history_times),
+                'enter_at': INTERFACE.nodes[node_index].enter_at_level,
+                'exit_at': INTERFACE.nodes[node_index].exit_at_level,
+                'laps': RACE.node_laps[node_index]
+                }
+
+    RHData.add_race_data(race_data)
+
+    # spawn thread for updating results caches
+    cache_params = {
+        'race_id': new_race.id,
+        'heat_id': RACE.current_heat,
+        'round_id': new_race.round_id,
+    }
+    gevent.spawn(build_atomic_result_caches, cache_params)
+
+    Events.trigger(Evt.LAPS_SAVE, {
+        'race_id': new_race.id,
+        })
+
+    logger.info('Current laps saved: Heat {0} Round {1}'.format(RACE.current_heat, max_round+1))
+    on_discard_laps(saved=True) # Also clear the current laps
+    gevent.spawn(INTERFACE.calibrate_nodes, race_data)
+    # else:
+    #     on_discard_laps()
+    #     message = __('Discarding empty race')
+    #     emit_priority_message(message, False, nobroadcast=True)
 
 
 @SOCKET_IO.on('resave_laps')
@@ -3095,7 +3118,8 @@ def emit_enter_and_exit_at_levels(**params):
     emit_payload = {
         'enter_at_levels': profile_enter_ats["v"][:RACE.num_nodes],
         'exit_at_levels': profile_exit_ats["v"][:RACE.num_nodes],
-        'autotune': [node.autotune for node in INTERFACE.nodes]
+        'auto_calibrate': [node.auto_calibrate for node in INTERFACE.nodes],
+        'calibrate': [node.calibrate for node in INTERFACE.nodes]
     }
     if ('nobroadcast' in params):
         emit('enter_and_exit_at_levels', emit_payload)
@@ -5248,6 +5272,9 @@ vrx_controller = initVRxController()
 
 if vrx_controller:
     Events.on(Evt.CLUSTER_JOIN, 'VRx', killVRxController)
+
+audio_manager = AudioEventManager(Events, RHData, RACE, rhconfig.AUDIO)
+audio_manager.install_default_effects()
 
 # data exporters
 export_manager = DataExportManager(RHData, PageCache, Language)
