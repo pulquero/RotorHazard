@@ -199,7 +199,6 @@ To view the startup options enter the following:
 ```
 python3 -m server.server -h
 ```
-with the following contents
 
 ### Start on Boot
 To configure the system to automatically start the RotorHazard server when booting up:
