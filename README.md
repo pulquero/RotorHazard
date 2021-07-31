@@ -51,6 +51,7 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
 
 To run the server:
 ```
+./install.sh
 cd src
 python3 -m server.server
 ```
