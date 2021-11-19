@@ -2,7 +2,7 @@
 
 import os
 import logging
-from monotonic import monotonic # to capture read timing
+from monotonic import monotonic  # to capture read timing
 import random
 
 from .Node import NodeManager
@@ -16,6 +16,8 @@ MAX_RSSI_VALUE = 999             # reject RSSI readings above this value
 
 
 class MockNodeManager(NodeManager):
+    TYPE = "Mock"
+
     def __init__(self, index):
         super().__init__()
         self.api_level = 0
@@ -33,7 +35,7 @@ class MockInterface(BaseHardwareInterface):
         self.data_files = [None]*num_nodes if use_datafiles else None
         for index in range(num_nodes):
             manager = MockNodeManager(index)
-            node = manager.add_node(index) # New node instance
+            node = manager.add_node(index)  # New node instance
             node.enter_at_level = 90
             node.exit_at_level = 80
             self.node_managers.append(manager)

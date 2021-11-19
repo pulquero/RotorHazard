@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class ChorusNodeManager(NodeManager):
+    TYPE = "Chorus"
+
     def __init__(self, serial_io):
         super().__init__()
         self.serial_io = serial_io

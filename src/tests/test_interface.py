@@ -105,6 +105,16 @@ class InterfaceTest(unittest.TestCase):
         self.assertEqual(new_enter_at_level, 11)
         self.assertEqual(new_exit_at_level, 6)
 
+    def test_mqtt(self):
+        intf = MockInterface(1)
+        intf.mqtt_topic = 'system'
+        intf.timer_id = 'local'
+        msg = {
+            'topic': intf._mqtt_create_node_topic(intf.node_managers[0], intf.nodes[0], "frequency"),
+            'payload': '5675'
+        }
+        intf._mqtt_set_frequency(intf.node_managers[0], None, None, msg)
+        self.assertEqual(intf.nodes[0].frequency, 5675)
 
 if __name__ == '__main__':
     unittest.main()

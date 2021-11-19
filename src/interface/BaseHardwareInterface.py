@@ -3,10 +3,12 @@ import gevent
 import logging
 from monotonic import monotonic
 from interface import persistent_homology as ph
+from server import RHTimeFns
+from server.RHUtils import FREQS, FREQUENCY_ID_NONE
 import bisect
+import json
 
-FREQUENCY_NONE = 0
-ENTER_AT_PEAK_MARGIN = 5 # closest that captured enter-at level can be to node peak RSSI
+ENTER_AT_PEAK_MARGIN = 5  # closest that captured enter-at level can be to node peak RSSI
 CAP_ENTER_EXIT_AT_MILLIS = 3000  # number of ms for capture of enter/exit-at levels
 
 logger = logging.getLogger(__name__)
@@ -28,34 +30,82 @@ class BaseHardwareInterface:
         self.nodes = []
         # Main update loop delay
         self.update_sleep = float(os.environ.get('RH_UPDATE_INTERVAL', update_sleep))
-        self.update_thread = None # Thread for running the main update loop
-        self.start_time = 1000*monotonic() # millis
+        self.update_thread = None  # Thread for running the main update loop
+        self.start_time = None  # millis
         self.environmental_data_update_tracker = 0
         self.race_start_time = 0
         self.race_status = BaseHardwareInterface.RACE_STATUS_READY
-        self.pass_record_callback = None # Function added in server.py
-        self.new_enter_or_exit_at_callback = None # Function added in server.py
-        self.node_crossing_callback = None # Function added in server.py
+        self.pass_record_callback = None  # Function added in server.py
+        self.new_enter_or_exit_at_callback = None  # Function added in server.py
+        self.node_crossing_callback = None  # Function added in server.py
         self.intf_error_report_limit = 0.0  # log if ratio of comm errors is larger
+        self.mqtt_client = None
+        self.mqtt_topic = None
+        self.timer_id = None
 
-    # returns the elapsed milliseconds since the start of the program
     def milliseconds(self):
-        return 1000*monotonic() - self.start_time
+        '''
+        Returns the elapsed milliseconds since this interface was started.
+        '''
+        return 1000*monotonic() - self.start_time if self.start_time is not None else None
 
     def start(self):
         if self.update_thread is None:
             logger.info('Starting {} background thread'.format(type(self).__name__))
             self.update_thread = gevent.spawn(self._update_loop)
+            self.start_time = 1000*monotonic()  # millis
+            if self.mqtt_client:
+                for node_manager in self.node_managers:
+                    msg = {'type': node_manager.__class__.TYPE, 'startTime': RHTimeFns.getEpochTimeNow()}
+                    self.mqtt_client.publish("{}/{}/{}".format(self.mqtt_topic, self.timer_id, node_manager.addr), json.dumps(msg))
+                    for node in node_manager.nodes:
+                        msg = {'node': node.index}
+                        self.mqtt_client.publish(self._mqtt_create_node_topic(node_manager, node), json.dumps(msg))
+                        self.mqtt_client.publish(self._mqtt_create_node_topic(node_manager, node, "frequency"), str(node.frequency))
+                    frequencyTopicFilter = "{}/{}/{}/+/frequency".format(self.mqtt_topic, self.timer_id, node_manager.addr)
+                    self.mqtt_client.message_callback_add(frequencyTopicFilter, lambda client, userdata, msg: self._mqtt_set_frequency(node_manager, client, userdata, msg))
+                    self.mqtt_client.subscribe(frequencyTopicFilter)
 
     def stop(self):
         if self.update_thread:
             logger.info('Stopping {} background thread'.format(type(self).__name__))
             self.update_thread.kill(block=True, timeout=0.5)
             self.update_thread = None
+            self.start_time = None
+            if self.mqtt_client:
+                for node_manager in self.node_managers:
+                    msg = {'stopTime': RHTimeFns.getEpochTimeNow()}
+                    self.mqtt_client.publish("{}/{}/{}".format(self.mqtt_topic, self.timer_id, node_manager.addr), json.dumps(msg))
+                    frequencyTopicFilter = "{}/{}/{}/+/frequency".format(self.mqtt_topic, self.timer_id, node_manager.addr)
+                    self.mqtt_client.unsubscribe(frequencyTopicFilter)
+                    self.mqtt_client.message_callback_remove(frequencyTopicFilter)
 
     def close(self):
         for manager in self.node_managers:
             manager.close()
+
+    def _mqtt_create_node_topic(self, node_manager, node, sub_topic=None):
+        node_topic = "{}/{}/{}/{}".format(self.mqtt_topic, self.timer_id, node_manager.addr, node.multi_node_index)
+        return node_topic+'/'+sub_topic if sub_topic else node_topic
+
+    def _mqtt_set_frequency(self, node_manager, client, userdata, msg):
+        topicNames = msg.topic.split('/')
+        if len(topicNames) >= 4:
+            timer_id = topicNames[-4]
+            nm_name = topicNames[-3]
+            multi_node_index = int(topicNames[-2])
+            if timer_id == self.timer_id and nm_name == node_manager.addr and multi_node_index < len(node_manager.nodes):
+                freq_id = msg.payload.decode('utf-8')
+                if len(freq_id) == 2:
+                    band = freq_id[0]
+                    channel = int(freq_id[1])
+                    freq = FREQS[freq_id] if freq_id in FREQS else None
+                else:
+                    freq = int(freq_id)
+                    band = ''
+                    channel = 0
+                if freq is not None:
+                    self.set_frequency(node_manager.nodes[multi_node_index].index, freq, band, channel)
 
     def _update_loop(self):
         while True:
@@ -95,7 +145,7 @@ class BaseHardwareInterface:
         prev_lap_id = node.node_lap_id
         if lap_id != prev_lap_id:
             node.node_lap_id = lap_id
-            if prev_lap_id != -1: # if -1 then just initialising node_lap_id
+            if prev_lap_id != -1:  # if -1 then just initialising node_lap_id
                 if lap_id != prev_lap_id + 1:
                     logger.warning("Missed lap!!! (lap ID was {}, now is {})".format(prev_lap_id, lap_id))
                 if self.race_status == BaseHardwareInterface.RACE_STATUS_RACING:
@@ -169,7 +219,7 @@ class BaseHardwareInterface:
             self.pass_record_callback(node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_REALTIME)
 
         elif len(upd_list) > 1:  # list contains multiple items; sort so processed in order by lap time
-            upd_list.sort(key = lambda i: i[1])
+            upd_list.sort(key=lambda i: i[1])
             for item in upd_list:
                 node = item[0]
                 lap_timestamp = item[1]
@@ -216,7 +266,7 @@ class BaseHardwareInterface:
                         else:
                             pass_idxs.append(idx-1)
                     hi = min([ccs[j].lifetime() for j in pass_idxs])
-                    lo = max([cc.lifetime() for cc in ccs if cc.lifetime()<hi]+[0])
+                    lo = max([cc.lifetime() for cc in ccs if cc.lifetime() < hi]+[0])
                     diff = hi - lo
                     if diff > 1:
                         enter_level = lo + diff//2
@@ -233,7 +283,7 @@ class BaseHardwareInterface:
 
     def intf_simulate_lap(self, node_index, ms_val):
         node = self.nodes[node_index]
-        lap_timestamp = monotonic() - (ms_val / 1000.0) - self.race_start_time # relative to start time
+        lap_timestamp = monotonic() - (ms_val / 1000.0) - self.race_start_time  # relative to start time
         node.enter_at_timestamp = node.exit_at_timestamp = 0
         gevent.spawn(self.pass_record_callback, node, lap_timestamp, BaseHardwareInterface.LAP_SOURCE_MANUAL)
 
@@ -285,7 +335,7 @@ class BaseHardwareInterface:
         return False
 
     def get_node_frequencies(self):
-        return [node.frequency if not node.scan_enabled else FREQUENCY_NONE for node in self.nodes]
+        return [node.frequency if not node.scan_enabled else FREQUENCY_ID_NONE for node in self.nodes]
 
     #
     # Get Json Node Data Functions
@@ -348,7 +398,7 @@ class BaseHardwareInterface:
 
     # log comm errors if error percentage is >= this value
     def set_intf_error_report_percent_limit(self, percentVal):
-        self.intf_error_report_limit = percentVal / 100;
+        self.intf_error_report_limit = percentVal / 100
 
     def get_intf_error_report_str(self, forceFlag=False):
         try:
@@ -362,9 +412,9 @@ class BaseHardwareInterface:
                                         w_err_ratio > self.intf_error_report_limit:
                 retStr = "CommErrors:"
                 if forceFlag or self.intf_write_error_count > 0:
-                    retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count, \
+                    retStr += "Write:{0}/{1}({2:.2%}),".format(self.intf_write_error_count,
                                     self.intf_write_command_count, w_err_ratio)
-                retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count, \
+                retStr += "Read:{0}/{1}({2:.2%})".format(self.intf_read_error_count,
                                     self.intf_read_command_count, r_err_ratio)
                 for node in self.nodes:
                     retStr += ", " + node.get_read_error_report_str()

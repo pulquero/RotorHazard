@@ -12,10 +12,13 @@ from interface import ExtremumFilter
 
 logger = logging.getLogger(__name__)
 
-RESPONSE_WAIT = 0.5 # secs
+RESPONSE_WAIT = 0.5  # secs
 WRITE_CHILL_TIME = 0.010
 
+
 class LapRFNodeManager(NodeManager):
+    TYPE = "LapRF"
+
     def __init__(self, addr, io_stream):
         super().__init__()
         self.max_rssi_value = 3500
@@ -24,7 +27,7 @@ class LapRFNodeManager(NodeManager):
         self.stream_buffer = bytearray()
         self.voltage = None
         self.min_lap_time = None
-        self.race_start_rtc_time = 0 # usecs
+        self.race_start_rtc_time = 0  # usecs
         self.race_start_time_request_ts = None
         self.last_write_ts = 0
 
@@ -153,7 +156,7 @@ class LapRFInterface(BaseHardwareInterface):
         elif isinstance(record, laprf.TimeEvent):
             if node_manager.race_start_time_request_ts is not None:
                 server_oneway = (monotonic() - node_manager.race_start_time_request_ts)/2
-                node_manager.race_start_rtc_time = record.rtc_time - server_oneway*1000000 # usecs
+                node_manager.race_start_rtc_time = record.rtc_time - server_oneway*1000000  # usecs
                 node_manager.race_start_time_request_ts = None
         elif isinstance(record, laprf.SettingsEvent):
             if record.min_lap_time:

@@ -83,6 +83,7 @@ def unpack_rssi(node, data):
 
 
 class RHNodeManager(NodeManager):
+    TYPE = "RH"
     MAX_RETRY_COUNT = 2
 
     def __init__(self):
@@ -152,7 +153,7 @@ class RHNodeManager(NodeManager):
         try:
             data = self.read_command(READ_FW_VERSION, FW_TEXT_BLOCK_SIZE, RHNodeManager.MAX_RETRY_COUNT)
             self.firmware_version_str = bytearray(data).decode("utf-8").rstrip('\0') \
-                                          if data != None else None
+                                          if data is not None else None
         except Exception:
             logger.exception('Error fetching READ_FW_VERSION from {}'.format(self.addr))
         return self.firmware_version_str
