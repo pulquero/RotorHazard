@@ -10,6 +10,13 @@ python3 -m pip install --upgrade -r requirements.txt
 sudo apt-get install python3-numpy
 cd ..
 
+# Mosquitto
+mkdir -p /etc/mosquitto/conf.d/
+sudo apt-get install mosquitto
+mosquitto_passwd -c -b mosquitto-bh.pwd race-admin fu56rg20
+sudo cp mosquitto-bh.* /etc/mosquitto/conf.d/
+sudo systemctl restart mosquitto
+
 # Build json schema docs
 python3 -m pip install --upgrade json-schema-for-humans
 mkdir -p doc/schemas
@@ -25,6 +32,7 @@ sudo apt-get install npm
 set -e
 cd race-explorer
 npm install
+export NODE_OPTIONS=--max_old_space_size=16000
 npm run build
 cd ..
 

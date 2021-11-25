@@ -1,4 +1,4 @@
-name: BetaHazard
+name: BetaHazard CI
 
 on:
   push:
