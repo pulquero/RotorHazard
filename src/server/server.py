@@ -423,6 +423,27 @@ def render_run():
         cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()))
 
 
+@APP.route('/run2')
+@requires_auth
+def render_run2():
+    '''Route to race management page.'''
+    frequencies = [node.frequency for node in INTERFACE.nodes]
+    nodes = []
+    for idx, freq in enumerate(frequencies):
+        if freq:
+            nodes.append({
+                'freq': freq,
+                'index': idx
+            })
+
+    return render_template('run2.html', serverInfo=serverInfo, getOption=RHData.get_option, __=__,
+        led_enabled=(led_manager.isEnabled() or (CLUSTER and CLUSTER.hasRecEventsSecondaries())),
+        vrx_enabled=vrx_controller!=None,
+        num_nodes=RACE.num_nodes,
+        nodes=nodes,
+        cluster_has_secondaries=(CLUSTER and CLUSTER.hasSecondaries()))
+
+
 @APP.route('/current')
 def render_current():
     '''Route to race management page.'''
