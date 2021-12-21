@@ -1,6 +1,6 @@
-{% extends "layout.html" %} {% block title %}{{ __('Event') }}{% endblock %} {% block head %}
+{% extends "layout_ui2.html" %} {% block title %}{{ __('Event') }}{% endblock %} {% block head %}
 
-<script src="./static/showdown-1.9.1/showdown.min.js"></script>
+<script src="./static/plugins/showdown-1.9.1/showdown.min.js"></script>
 
 {% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
@@ -304,46 +304,96 @@
 	});
 </script>
 
-<main class="page-heats">
+<div class="row layout-top-spacing">
 
-<div id="section-event">
-	<h2>{{ getOption('eventName') }}</h2>
-	<div id="description">
-		<p class="form-note">{{ __('Loading...') }}</p>
-	</div>
+    <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 col-12 layout-spacing">    
+
+		<div class="statbox widget box box-shadow">
+            <div class="widget-header">                                      
+                <h4>Current Event Information</h4>              
+            </div>
+
+            <div class="widget-content widget-content widget-content-area grid-system">
+	            
+	            <div class="hp_eventlogo">
+			        {% if getOption("timerLogo") %}
+						<img src="./static/user/{{ getOption('timerLogo') }}" alt="{{ getOption('timerName') }}" />
+					{% else %}
+						<div class="rh-logo"></div>
+					{% endif %}
+	            </div>
+	            
+                <h1 class="eventname">{{ getOption('eventName') }}</h1>
+				<p>{{ getOption('eventDescription') }}</p>
+				
+            </div>
+        </div>
+
+    </div>
+    
+    <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 col-12 layout-spacing">   
+
+        <div class="statbox widget box box-shadow">
+            <div class="widget-header">                                      
+                <h4>{{ __('Pilots') }}</h4>              
+            </div>
+            <div class="widget-content widget-content widget-content-area grid-system"> 
+				<ul class="pilots">
+					<li>{{ __('Loading...') }}</li>
+				</ul>			          
+            </div>
+        </div>
+
+        <div class="statbox widget box box-shadow">
+            <div class="widget-header">                                      
+                <h4>{{ __('Classes') }}</h4>              
+            </div>
+            <div class="widget-content widget-content widget-content-area grid-system">
+				<div id="race_classes" class="race_classes">
+					<p class="form-note">{{ __('Loading...') }}</p>
+				</div>	
+            </div>
+        </div>
+
+    </div>    
+
 </div>
 
-<div id="section-heats">
-	<!--Display the heats-->
-	<h2>{{ __('Heats') }}</h2>
-	<ul id="heat_list">
-		<li>{{ __('Loading...') }}</li>
-	</ul>
+<div class="row layout-top-spacing">
+
+    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 layout-spacing">    
+        <div class="statbox widget box box-shadow">
+            <div class="widget-header">                                      
+                <h4>{{ __('Heats') }}</h4>              
+            </div>
+            <div class="widget-content widget-content widget-content-area grid-system"> 
+				<ul id="heat_list">
+					<li>{{ __('Loading...') }}</li>
+				</ul>			          
+            </div>
+        </div>
+    </div> 
+
+    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 layout-spacing">    
+        <div class="statbox widget box box-shadow">
+            <div class="widget-header">                                      
+                <h4>{{ __('Formats') }}</h4>              
+            </div>
+            <div class="widget-content widget-content widget-content-area grid-system"> 
+				<div id="race_formats" class="race_formats">
+					<p class="form-note">{{ __('Loading...') }}</p>
+				</div>			          
+            </div>
+        </div>
+    </div> 	
+
 </div>
 
-<div id="section-pilots">
-	<!--Display the pilots-->
-	<h2>{{ __('Pilots') }}</h2>
-	<ul id="pilot_list" class="pilots">
-		<li>{{ __('Loading...') }}</li>
-	</ul>
-</div>
 
-<div id="section-classes">
-	<!--Display the classes-->
-	<h2>{{ __('Classes') }}</h2>
-	<div id="race_classes" class="race_classes">
-		<p class="form-note">{{ __('Loading...') }}</p>
-	</div>
-</div>
+<!-- SET PAGE ACTIVE -->
+<script>
+	$( "#sb_btn_event" ).addClass( "active" );
+	$( "#mobnav_btn_event" ).addClass( "active" );
+</script>
 
-<div id="section-formats">
-	<!--Display the formats-->
-	<h2>{{ __('Formats') }}</h2>
-	<div id="race_formats" class="race_formats">
-		<p class="form-note">{{ __('Loading...') }}</p>
-	</div>
-</div>
-
-</main>
 {% endblock %}

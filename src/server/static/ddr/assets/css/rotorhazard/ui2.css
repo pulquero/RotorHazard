@@ -1,0 +1,391 @@
+body{
+	background-color: #020309;
+	color: white;
+}
+
+*:focus {
+    outline: none;
+}
+
+
+.modal-content {
+	background-color: #0a101c;
+	color: white;
+}
+
+.modal-header {
+	border-color: #191919;
+}
+
+.modal-header .btn-close {
+	color: #fff!important;
+}
+
+.no-padding {
+padding: 0px;
+}
+
+
+.main_container .container {
+	overflow-x: hidden;
+}
+
+.mw300 {
+	max-width: 300px;
+}
+
+.form-control:disabled, .form-control[readonly] {
+	background-color: rgb(19, 19, 19);
+	color: rgb(170, 170, 170);
+	pointer: 
+}
+
+/* PAGE LAYOUT */
+
+#dashboard_frame {
+	/*width: 100vw;*/
+	overflow-x: hidden;
+}
+
+#topbar {
+	background-color: rgba(0, 0, 17, 0.07);
+	height: 50px;
+	margin-bottom: 20px;
+}
+
+#tb_logo {
+	float: left;
+	text-align: center;
+	width: 400px;
+	padding-top: 12px;
+}
+
+#tb_logo img{
+	max-height: 30px;
+}
+
+#tb_btns_left, #tb_btns_right {
+	width: calc(calc(100% - 400px)/2);
+	height: 40px;
+	float: left;
+}
+
+.widget {
+	margin-bottom: 20px;
+	background-color: #0e1726;
+}
+
+.widget .widget-header {
+	padding: 14px 20px 0px 20px!important;
+	border-bottom: 1px solid rgb(0, 0, 0);
+}
+
+.server_messages li{
+	list-style: none;
+
+}
+
+
+.admin_top_btn {
+	float: right;
+	margin: 20px 24px;
+	font-size: 20px;
+	color: #fff;;
+}
+
+.input-group-text i.fas {
+	margin-right: 8px;
+}
+
+/* TIMERBOX */
+
+
+
+#timerBox {
+	width: 24vw;
+		background-color: rgba(12, 12, 12, 0.43);
+	float: left;
+	padding: 0;
+	margin: 0;
+}
+
+
+
+
+.ledcolorswatches button {
+	padding: 0px!important;
+	border: 0px;
+}
+
+.ledcolorswatches button span {
+	height: 26px;
+	min-width: 26px;
+}
+
+
+
+.form-select, .form-select:disabled, .form-control, .form-control:focus, .heatselection select, .input-group-text {
+	background-color: rgba(0, 0, 0, 0.5);
+	border-color: rgba(0, 0, 0, 0.77);
+	color: #fff;
+}
+
+
+
+.led_level {
+	text-align: right;
+	font-size: 12px;
+}
+
+#set_led_brightness {
+	width: 100%;
+}
+
+#set_led_color {
+	float: right;
+}
+
+
+.audio_qs_btn {
+	display: inline-block;
+	width: 46px;
+	height: 46px;
+	text-align: center;
+	font-size: 24px;
+	padding-top: 7px;
+	border-radius: 4px;
+}
+
+
+
+
+
+/* Status Icon in Header */
+
+#statusicons {
+	padding-top: 14px;
+	padding-right: 10px;
+}
+
+.si_item {
+	float: right;
+	/* width: 60px; */
+	text-align: center;
+	margin: 0px 4px;
+	padding: 0 10px;
+}
+
+.si_item .si_item_icon {
+	font-size: 20px;
+	color: #444444
+}
+
+.si_item .si_item_span {
+	font-size: 9px;
+	color: #444444
+}
+
+.si_item_connected .si_item_icon, .si_item_connected .si_item_span{
+	color: #a1a1a1
+}
+
+
+
+/* Homepage */
+.hp_sponsorlist img{
+	height: 80px;
+}
+
+.hp_eventlogo svg, .hp_eventlogo img {
+	max-height: 100px;
+	margin-bottom: 12px;
+}
+
+.home_quickbuttons {
+	margin-bottom: 10px;
+}
+
+.admin-hide {
+	display: none!important;
+}
+
+
+/* Settings */
+.node-list h3 label {
+}
+
+.node-list h3 {
+	font-size: 16px;
+	padding: 8px 12px!important;
+	font-weight: 500;
+	display: block;
+	border-radius: 3px;
+}
+
+.node table {
+	width: 100%;
+}
+.node .datarow td {
+	font-size: 12px;
+}
+
+.node .datarow td .value{
+	text-align: right!important;
+}
+
+#race_classes li h3, #heats li h3 {
+	font-size: 18px;
+	font-size: 16px;
+	background-color: #386fb6;
+	margin: 0px;
+	padding: 6px 12px;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+}
+
+
+/* Heats */
+
+#heat_list {
+	list-style: none;
+	padding-left: 0px;
+}
+
+#heat_list li {
+	display
+}
+
+#heat_list h3{
+	font-size: 20px;
+}
+
+#heat_list h4, #race_formats h3 {
+	font-size: 16px;
+	background-color: #386fb6;
+	margin: 0px;
+	padding: 6px 12px;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+}
+
+#heat_list .heats {
+	margin-bottom: 20px;
+}
+
+#heat_list .heats ol {
+	border-color: #000!important;
+}
+
+
+#race_formats ul {
+	list-style: none;
+	padding-left: 0px;
+}
+
+#race_formats > ul > li {
+	display: block;
+	float: left;
+	width: calc(20% - 0.5em);
+	margin: 0 0.25em 0.5em;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+@media only screen and (max-width: 500px) {
+	#race_formats > ul > li {
+		width: calc(100% - 0.5em);
+		margin-bottom: 20px;
+	}
+}
+
+#race_formats > ul > li .format-info {
+	padding: 8px;
+	border: 1px solid black;
+	border-top: 0px;
+	border-bottom-left-radius: 3px;
+	border-bottom-right-radius: 3px;
+}
+
+#race_formats > ul > li .format-info li {
+	margin-bottom: 14px;
+}
+
+#race_formats > ul > li .label {
+font-weight: 600;
+font-size: 14px;
+}
+
+#race_formats > ul > li .value {
+font-size: 13px;	
+}
+
+
+/* Marshal */
+
+#race-title {
+	font-size: 20px;
+	padding: 6px 12px;
+	border-radius: 3px;
+}
+
+#laps {
+	width: 100%;
+}
+
+.control-block h3 {
+	font-size: 18px;
+	padding: 6px 12px;
+	border-radius: 3px;	
+	margin-bottom: 6px!important;
+}
+
+
+/* Results */
+.panel.collapsing {
+	height: auto;
+}
+
+.rssi-graph.page {
+	height: 240px!important;
+}
+
+
+
+/* Run2 */
+h5  {
+	font-size: 18px;
+}
+
+#nextheat_title {
+	font-size: 16px;
+	font-weight: 700;
+	padding-left: 5px;
+	padding-bottom: 2px;
+	border-bottom: 1px solid #fff;
+	margin-bottom: 6px;
+}
+
+#nextheat_pilots {
+	width: 100%;
+}
+
+#nextheat_pilots .nh_pilot {
+	width: calc(50% - 12px);
+	height: 50px;
+	border: 1px solid rgba(255, 255, 255, 0.4);
+	border-radius: 6px;
+	float: left;
+	overflow: hidden;
+	text-align: center;
+	margin: 5px;
+}
+
+#nextheat_pilots .nh_pilot .nh_pilot_channel {
+	font-size: 11px;
+	padding: 4px 0 2px 0;
+}
+
+#nextheat_pilots .nh_pilot .nh_pilot_tag {
+	padding: 0;
+	font-size: 13px;
+}

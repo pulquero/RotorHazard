@@ -1,6 +1,6 @@
-{% extends "layout.html" %} {% block title %}{{ __('Home') }}{% endblock %} {% block head %}
+{% extends "layout_ui2.html" %} {% block title %}{{ __('Home') }}{% endblock %} {% block head %}
 
-<script src="./static/showdown-1.9.1/showdown.min.js"></script>
+<script src="./static/plugins/showdown-1.9.1/showdown.min.js"></script>
 
 {% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
@@ -30,43 +30,150 @@
 	});
 </script>
 
-<main class="page-home">
+<div class="row layout-top-spacing equalflex">
 
-<div class="header">
-	<h1>
-		{% if getOption("timerLogo") %}
-			<img src="./static/user/{{ getOption('timerLogo') }}" alt="{{ getOption('timerName') }}" />
-		{% else %}
-			<div class="rh-logo"></div>
-		{% endif %}
-	</h1>
+    <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 col-12">
+	    
+        <div class="statbox widget box box-shadow">
+            <div class="widget-header">                                      
+                <h4>Current Event Information</h4>              
+            </div>
+
+            <div class="widget-content widget-content widget-content-area grid-system">
+	            
+	            <div class="hp_eventlogo">
+			        {% if getOption("timerLogo") %}
+						<img src="./static/user/{{ getOption('timerLogo') }}" alt="{{ getOption('timerName') }}" />
+					{% else %}
+						<div class="rh-logo"></div>
+					{% endif %}
+	            </div>
+	            
+                <h1 class="eventname">{{ getOption('eventName') }}</h1>
+				<p>{{ getOption('eventDescription') }}</p>
+				
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 col-12">
+	    
+        <div class="statbox widget box box-shadow">
+            <div class="widget-header">                                      
+                <h4>Quick Actions</h4>              
+            </div>
+
+            <div class="widget-content widget-content widget-content-area grid-system">
+	            
+	            <div class="home_quickbuttons">
+		            <a href="/heats" class="btn btn-primary btn-xl">
+			            <div class="icon">
+			            	<i class="fas fa-list-ol"></i>
+			            </div>
+			            <div class="title">
+				            Heats & Classes
+			            </div>
+			        </a>
+
+		            <a href="/results" class="btn btn-primary btn-xl">
+			            <div class="icon">
+			            	<i class="fas fa-trophy"></i>
+			            </div>
+			            <div class="title">
+				            Race Results
+			            </div>
+			        </a>
+			        
+		            <a href="/current" class="btn btn-primary btn-xl">
+			            <div class="icon">
+			            	<i class="fas fa-flag-checkered"></i>
+			            </div>
+			            <div class="title">
+				            Current Race
+			            </div>
+			        </a>			        
+		            
+	            </div>
+	            
+	            <div class="admin-hide" id="home_quickbuttons">
+		            <a href="/race" class="btn btn-secondary btn-xl">
+			            <div class="icon">
+			            	<i class="fas fa-stopwatch"></i>
+			            </div>
+			            <div class="title">
+				            {{ __("Start Race") }}
+			            </div>
+			        </a>
+
+		            <a href="/marshal" class="btn btn-secondary btn-xl">
+			            <div class="icon">
+			            	<i class="fas fa-microscope"></i>
+			            </div>
+			            <div class="title">
+				            {{ __("Marshal") }}
+			            </div>
+			        </a>
+			        
+		            <a href="/settings" class="btn btn-secondary btn-xl">
+			            <div class="icon">
+			            	<i class="fas fa-cogs"></i>
+			            </div>
+			            <div class="title">
+				            {{ __("Settings") }}
+			            </div>
+			        </a>			        
+		            
+	            </div>
+
+           
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-6 col-lg-6 col-md-6 col-sm-12 col-12 layout-spacing">
+	    
+        <div class="statbox widget box box-shadow">
+            <div class="widget-header">                                      
+                <h4>Our Sponsors</h4>              
+            </div>
+
+            <div class="widget-content widget-content widget-content-area grid-system">
+                <div class="hp_sponsorlist">
+                </div>
+            </div>
+        </div>
+    </div>
+    
 </div>
 
-<div class="panel">
-	<div class="panel-header">
-		<h2>{{ __("Current Event") }}</h2>
-	</div>
-	<div class="panel-content">
-		<h3>{{ getOption('eventName') }}</h3>
-		<div id="description"></div>
-	</div>
-</div>
+<script>
 
-<div class="panel">
-	<div class="panel-header">
-		<h2>{{ __("Actions") }}</h2>
-	</div>
-	<div class="panel-content">
-		<ul class="home-menu">
-			<li><a class="button-like" href="/heats">{{ __("Event Heats and Classes") }}</a></li>
-			<li><a class="button-like" href="/results">{{ __("View Race Results") }}</a></li>
-			<li><a class="button-like" href="/current">{{ __("Spectate Current Race") }}</a></li>
-			<li class="admin-hide"><a class="button-like" href="/race">{{ __("Start Race") }}</a></li>
-			<li class="admin-hide"><a class="button-like" href="/marshal">{{ __("Marshal Race Data") }}</a></li>
-			<li><a class="button-like" href="/settings">{{ __("Admin / Settings") }}</a></li>
-		</ul>
-	</div>
-</div>
+//get sponsored images
+var folder = "/static/user/sponsors/";
 
-</main>
+i = 1;
+loadImg = 1;
+
+while (loadImg == 1 &&  i<10) {
+
+	urlToFile = folder + '/' + i + '.png';
+
+	var xhr = new XMLHttpRequest();
+    xhr.open('HEAD', urlToFile, false);
+    xhr.send();
+	
+     
+    if (xhr.status == "404") {
+		loadImg = 0;
+    } else {
+		$(".hp_sponsorlist").append( '<a href="#"><img src="'+urlToFile+'"></a>' );
+		i++;
+    }
+
+}
+
+
+</script>
+
+
 {% endblock %}

@@ -1,4 +1,4 @@
-{% extends "layout.html" %} {% block title %}{{ __('Results') }}{% endblock %} {% block head %} {% endblock %} {% block content %}
+{% extends "layout_ui2.html" %} {% block title %}{{ __('Results') }}{% endblock %} {% block head %} {% endblock %} {% block content %}
 <script type="text/javascript" charset="utf-8">
 	var data_dependencies = [
 		'all_languages',
@@ -241,15 +241,36 @@
 		});
 	});
 </script>
-<main class="page-rounds">
 
-<div id="results">
-	<p>{{ __('Loading...') }}</p>
+
+
+<div class="row layout-top-spacing">
+
+    <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 col-12 layout-spacing">    
+        <div class="statbox widget box box-shadow">
+            <div class="widget-header">                                      
+                <h4>{{ __('Results') }}</h4>              
+            </div>
+            <div class="widget-content widget-content widget-content-area grid-system"> 
+				<div id="results">
+					<p>{{ __('Loading...') }}</p>
+
+
+					{% if Debug %}
+					<br><br>
+					<p><button class="debug button-like clean-cache">{{ __('Clean Cache') }}</button></p>
+					{% endif %}
+
+				</div>		          
+            </div>
+        </div>
+    </div> 
 </div>
 
-{% if Debug %}
-<p><button class="debug button-like clean-cache">{{ __('Clean Cache') }}</button></p>
-{% endif %}
+<!-- SET PAGE ACTIVE -->
+<script>
+	$( "#sb_btn_results" ).addClass( "active" );
+	$( "#mobnav_btn_results" ).addClass( "active" );
+</script>
 
-</main>
 {% endblock %}

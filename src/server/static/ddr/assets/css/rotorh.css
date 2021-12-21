@@ -1,0 +1,182 @@
+@import url('main.css');
+@import url('structure.css');
+/*
+    Importing highlight.js CSS code 
+
+    Just for demo purpose only
+	
+	@Note:-  monokai-sublime.css stylesheet is for highliting the code;
+
+*/
+
+.equalflex {
+  display: flex;
+  display: -webkit-flex;
+  flex-wrap: wrap;
+}
+
+.menu.single-menu {
+	margin: 0px!important;
+}
+
+.panel.collapsing.active{
+display: block;
+	/*height: 62px;	*/
+	height: auto;
+}
+
+.panel.collapsing.active .panel-header{
+	overflow:  visible!important;
+	height: 62px!important;
+}
+
+.page-race {
+	height: auto!important;
+}
+
+#main_panel {
+	height: auto!important;
+}
+
+
+.widget .widget-header h4 {
+	background-color: rgba(0, 0, 0, 0);
+}
+
+h1.eventname {
+	font-size: 20px;
+	font-weight: 600;
+}
+
+.hp_eventlogo img {
+	max-height: 80px;
+	margin-bottom: 20px;
+}
+
+.hp_sponsorlist a {
+	display: inline-block;
+	float: left;
+}
+
+.hp_sponsorlist a img {
+	max-height: 80px;
+}
+
+.home-menu {
+	list-style: none;
+	padding-inline-start: 0px;
+}
+
+.home-menu li {
+	margin-bottom: 10px;
+}
+
+.home_quickbuttons {
+	margin-bottom: 10px;
+
+}
+
+.home_quickbuttons a.btn {
+	width: calc(33% - 12px);
+	margin-right: 10px;
+	margin-bottom: 10px;
+	padding-left: 4px;
+	padding-right: 4px;
+}
+
+
+.home_quickbuttons a.btn .icon {
+	font-size: 42px;
+}
+
+
+.home_quickbuttons a.btn .title {
+	font-size: 14px;
+	font-weight: 500;
+}
+
+
+.race_classes h3, .heats h3, .current_heat {
+	background: none;
+	display: block;
+	font-size: 16px;
+	font-weight: 600;
+	background-color: #1b55e2;
+	padding: 12px 12px;
+	border-top-left-radius: 3px;
+	border-top-right-radius: 3px;
+	margin-bottom: 0px;
+
+}
+
+.race_classes>ol>li .class-info {
+	padding-top: 12px;
+	border-bottom-left-radius: 3px;
+	border-bottom-right-radius: 3px;
+}
+
+.race_classes>ol>li {
+	width: calc(50% - 0.5em);
+}
+
+.race_class {
+	padding: 4px 6px;
+}
+
+.pilots li {
+	margin-right: 10px;
+}
+
+.footer_rh_logo img {
+	width: 16px;
+	margin-right: 6px;
+}
+
+
+
+
+.timing-clock, .time-display {
+	border-radius: 3px;
+}
+
+.audio_qs span {
+	padding-bottom: 8px;
+	display: block;
+}
+
+.audio_qs_btn {
+	display: inline-block;
+	width: 46px;
+	height: 46px;
+	text-align: center;
+	font-size: 24px;
+	padding-top: 7px;
+	border-radius: 4px;
+}
+
+.modal-header .close {
+	color: white;
+	text-shadow: none;
+}
+
+
+.audiomodalbtn i.fas {
+	margin-right: 6px;
+}
+
+@media only screen and (min-width: 1200px) {
+	#exampleModal {
+		margin: 0 calc(calc(100% - 1138px)/2);
+	}
+}
+
+.modal-dialog {
+	max-width: none;
+	margin: 0 auto;
+}
+
+
+
+
+
+

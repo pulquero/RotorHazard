@@ -1,0 +1,172 @@
+/* Race */
+.timing-clock {
+	font-size: 3rem;
+	background: #000;
+	color: #fff;
+	padding: 0.25em 0;
+	display: block;
+	text-align: center;
+	font-weight: bold;
+	position: relative;
+}
+
+.race-running .timing-clock {
+	background: hsl(92.7, 67.8%, 29.2%);
+}
+
+.race-stopped .timing-clock {
+	background: #9e3d22;
+}
+
+.timing-clock.staging {
+	background: hsl(25, 85%, 55%);
+	color: #000;
+}
+
+.timing-clock .warning {
+	position: absolute;
+	left: 0.25em;
+	line-height: 1.3;
+	display: none;
+}
+
+.round {
+	margin-bottom: 1rem;
+}
+
+.timercontrols {
+	padding: 2px 8px;
+	margin: 0 auto;
+	width: auto;
+	margin-top: 4px;
+	display: table;
+}
+
+.btn-group-playback {
+	margin-right: 20px;
+}
+
+.heatselection select {
+	max-width: 60%;
+	margin: 0 20%;
+	margin-top: 12px;
+	margin-bottom: 20px;
+}
+
+.heatselection .form-select:disabled {
+	background-color: #383838;
+}
+
+
+
+#leaderboard {
+	color: #afafaf;
+}
+
+#leaderboard table {
+	width: 100%;
+	border: solid 1px #3f3f3f;
+	border-radius: 4px;
+}
+
+#leaderboard table tr {
+	border-top: 1px solid #3f3f3f;
+}
+
+#leaderboard table td, #leaderboard table th {
+	padding: 4px 12px;
+}
+
+#leaderboard table th {
+	font-size: 16px;
+	font-weight: 700;	
+}
+
+#leaderboard table td {
+	font-size: 14px;
+	font-weight: 400;		
+}
+
+
+
+
+
+.widget-content-area {
+    padding: 20px;
+    position: relative;
+    background-color: #0e1726;
+    border-radius: 8px!important;
+    overflow: hidden;
+}
+
+.widget-content-area.no-padding{
+    padding: 0px;	
+}
+
+.row {
+	padding: 0px 20px;
+}
+
+.race-header a.button-like {
+	padding: 2px 8px;
+	padding-top: 4px;
+	border-radius: 3px;
+	text-decoration: none;
+}
+
+.race-header button {
+	
+}
+
+.race-header .channel-block {
+	border-radius: 3px;
+}
+
+
+
+.mb10 {
+	margin-bottom: 10px;
+}
+
+
+
+.LED-color span,
+.LED-chase span {
+	display: block;
+	min-width: 1.2em;
+	height: 1.2em;
+	margin: 0;
+}
+
+.LED-chase span {
+	background: url(image/chase.svg) center no-repeat;
+}
+
+.led img {
+	display: block;
+	margin: 0;
+}
+
+
+
+
+.datarow {
+	font-size: 1rem;
+}
+
+.datarow td:first-child {
+	text-align: left;
+}
+
+h2 {
+	padding: 0.25rem;
+	background: #386fb6;
+	color: #fff;
+	position: relative;
+	margin-bottom: 1rem;
+	font-weight: 500;
+	background: hsl(var(--hue_0), var(--sat_0), var(--lum_0_high));
+	color: var(--contrast_0_high);
+}
+
+

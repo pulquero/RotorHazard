@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ 	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="description" content="RotorHazard">
+	<meta name="google" content="notranslate">
+	<title>{% block title %}{% endblock %}: {{ getOption("timerName") }}</title>
+
+	<!-- Icons -->
+	<link rel="apple-touch-icon" sizes="180x180" href="/static/image/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/static/image/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/static/image/favicon-16x16.png">
+	<link rel="manifest" href="/static/image/site.webmanifest">
+	<link rel="mask-icon" href="/static/image/safari-pinned-tab.svg" color="#ee7a28">
+	<link rel="shortcut icon" href="/static/image/favicon.ico">
+	<meta name="msapplication-TileColor" content="#ee7a28">
+	<meta name="msapplication-config" content="/static/image/browserconfig.xml">
+	<meta name="theme-color" content="#224873">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
+    
+	<script type="text/javascript" src="/static/plugins/jquery-3.2.1/jquery.min.js"></script>
+    
+	<audio id="sound_buzzer" src="/static/audio/buzzer.mp3" type="audio/mp3"></audio>
+	<audio id="sound_beep" src="/static/audio/beep.mp3" type="audio/mp3"></audio>
+	<audio id="sound_stage" src="/static/audio/stage.mp3" type="audio/mp3"></audio>
+	<audio id="sound_enter" src="/static/audio/enter.mp3" type="audio/mp3"></audio>
+	<audio id="sound_exit" src="/static/audio/exit.mp3" type="audio/mp3"></audio>
+	<audio id="sound_cconnect" src="/static/audio/cconnect.mp3" type="audio/mp3"></audio>
+	<audio id="sound_cdisconnect" src="/static/audio/cdisconnect.mp3" type="audio/mp3"></audio>
+	<audio id="sound_leader" src="/static/audio/leader.mp3" type="audio/mp3"></audio>
+	<audio id="sound_winner" src="/static/audio/winner.mp3" type="audio/mp3"></audio>
+
+	<!-- Scripts -->
+	<script type="text/javascript" src="/static/plugins/articulate/articulate.min.js"></script>
+	<script type="text/javascript" src="/static/plugins/socket.io-2.2.0/socket.io.min.js"></script>
+	<script type="text/javascript" src="/static/plugins/smoothie/smoothie.js"></script>
+	<script type="text/javascript" src="/static/plugins/magnific-1.1.0/magnific-inline-min.js"></script>
+	<script type="text/javascript" src="/static/plugins/svgasset.js?{{ serverInfo['release_version'] | urlencode }}"></script>
+	<script type="text/javascript" src="/static/rotorhazard.js?{{ serverInfo['release_version'] | urlencode }}"></script>
+	
+	<link rel="stylesheet" href="/static/plugins/magnific-1.1.0/magnific-popup.css"></link>
+	
+	<!-- BEGIN GLOBAL MANDATORY STYLES -->
+	<link href="/static/plugins/bootstrap/bootstrap.min.css" rel="stylesheet" type="text/css" />
+	<script type="text/javascript" src="/static/plugins/bootstrap/bootstrap.bundle.min.js"></script>
+
+    <!-- END GLOBAL MANDATORY STYLES -->
+
+	<style>
+		
+
+	/* CSS variables for interface adjustments */
+	html {
+		--hue_0: {{ getOption("hue_0") }};
+		--sat_0: {{ getOption("sat_0") }}%;
+		--lum_0_low: {{ getOption("lum_0_low") }}%;
+		--lum_0_high: {{ getOption("lum_0_high") }}%;
+		--contrast_0_low: {{ getOption("contrast_0_low") }};
+		--contrast_0_high: {{ getOption("contrast_0_high") }};
+		--hue_1: {{ getOption("hue_1") }};
+		--sat_1: {{ getOption("sat_1") }}%;
+		--lum_1_low: {{ getOption("lum_1_low") }}%;
+		--lum_1_high: {{ getOption("lum_1_high") }}%;
+		--contrast_1_low: {{ getOption("contrast_1_low") }};
+		--contrast_1_high: {{ getOption("contrast_1_high") }};
+	}
+
+	</style>
+	<!-- Child template head content -->
+	{% block head %}{% endblock %}
+  
+	<script>
+		$(document).ready(function(){
+			$("#menuslideBtn").click(function(){
+			  $(".wrapper").toggleClass("active")
+			})
+
+		})
+	</script>
+    
+
+</head>
+
+
+<body>
+
+	
+	<div class="mobile_navbar">
+		<div class="container no-padding">
+			<div class="row">
+				<a href="/run2" id="mobnav_btn_run2" class="col admin-hide">
+					<div class="mobnav_icon">
+						<i class="fas fa-stopwatch"></i>
+					</div>
+					<span>Run</span>
+				</a>
+				<a href="/event" id="mobnav_btn_event" class="col">
+					<div class="mobnav_icon">
+						<i class="fas fa-sitemap"></i>
+					</div>
+					<span>Event</span>
+				</a>
+				<a href="/results" id="mobnav_btn_results" class="col">
+					<div class="mobnav_icon">
+						<i class="fas fa-trophy"></i>
+					</div>
+					<span>Results</span>
+				</a>
+				<a href="/current" id="mobnav_btn_current" class="col">
+					<div class="mobnav_icon">
+						<i class="fas fa-flag-checkered"></i>
+					</div>
+					<span>Current</span>
+				</a>					
+				<a href="/marshal" id="mobnav_btn_marshal" class="col admin-hide">
+					<div class="mobnav_icon">
+						<i class="fas fa-microscope"></i>
+					</div>
+					<span>Marshal</span>
+				</a>	
+				<a href="/settings" id="mobnav_btn_settings" class="col">
+					<div class="mobnav_icon">
+						<i class="fas fa-cogs"></i>
+					</div>
+					<span>Settings</span>
+				</a>								
+			</div>
+		</div>
+	</div>
+
+
+
+
+	<div class="wrapper active">
+		
+		  
+		<div class="main_container">
+			<div class="sidebar">
+				<div class="sidebar__inner">
+			
+				  <ul>
+					<li>
+						<a href="/run2" id="sb_btn_run2" class="admin-hide">
+						  <span class="icon"><i class="fas fa-stopwatch"></i></span>
+						  <span class="title">{{ __("Run") }}</span>
+						</a>
+					  </li>					
+					<li>
+					  <a href="/event" id="sb_btn_event">
+						<span class="icon"><i class="fas fa-sitemap"></i></span>
+						<span class="title">{{ __("Event") }}</span>
+					  </a>
+					</li>
+					<li>
+					  <a href="/results" id="sb_btn_results">
+						<span class="icon"><i class="fas fa-trophy"></i></span>
+						<span class="title">{{ __("Results") }}</span>
+					  </a>
+					</li>
+					<li>
+					  <a href="/current" id="sb_btn_current">
+						<span class="icon"><i class="fas fa-flag-checkered"></i></span>
+						<span class="title">{{ __("Current") }}</span>
+					  </a>
+					</li>
+					<li>
+					  <a href="/marshal" id="sb_btn_marshal" class="admin-hide">
+						<span class="icon"><i class="fas fa-microscope"></i></span>
+						<span class="title">{{ __("Marshal") }}</span>
+					  </a>
+					</li>
+					<li>
+					  <a href="/settings" id="sb_btn_settings" class="admin-hide">
+						<span class="icon"><i class="fas fa-cogs"></i></span>
+						<span class="title">{{ __("Settings") }}</span>
+					  </a>
+					</li>
+				  </ul>
+				</div>
+				<div id="menuslideBtn"><i class="far fa-arrow-alt-circle-right"></i></div>
+			</div>
+
+			<div class="container">
+					<div id="topbar">
+						
+						<div id="tb_btns_left">	
+						</div>
+						
+						<div id="tb_logo">
+							{% if getOption("timerLogo") %}
+								<a href="/"><img src="./static/user/{{ getOption('timerLogo') }}" alt="{{ getOption('timerName') }}"></a>
+							{% else %}
+								<a href="/"><img src="./static/ddr/img/rh_icon.svg"></a>
+							{% endif %}
+
+						</div>
+						
+						<div id="tb_btns_right">
+
+							<a href="/settings" class="admin_top_btn"><i class="fas fa-cogs"></i></a>
+							
+							<!--
+							<div id="statusicons" class="admin-hide">
+								
+								<div class="si_item si_item_connected">
+									<div class="si_item_icon"><i class="fas fa-battery-three-quarters"></i></div>
+									<div class="si_item_span">12.4V</div>
+								</div>
+								
+								<div class="si_item si_item_connected">
+									<div class="si_item_icon"><i class="fas fa-traffic-light"></i></div>
+									<div class="si_item_span">Connected</div>
+								</div>
+								
+								<div class="si_item">
+									<div class="si_item_icon"><i class="fas fa-magnet"></i></div>
+									<div class="si_item_span">Disconnected</div>
+								</div>	
+								
+							</div>
+							-->
+							
+						</div>			
+								
+					</div>
+					
+					{% block content %}{% endblock %}					
+
+			</div>
+		</div>
+		
+	</div>	
+
+    <link href="/static/ddr/assets/css/rotorhazard/ui2.css" rel="stylesheet">
+    <link href="/static/ddr/assets/css/rotorhazard/sidebar.css" rel="stylesheet">
+
+	<link href="/static/ddr/assets/css/rotorhazard/rotorhazard_essentials.css" rel="stylesheet"> 
+    <link href="/static/ddr/assets/css/rotorhazard/node.css" rel="stylesheet">
+
+    <link href="/static/plugins/fontawesome/css/all.min.css" rel="stylesheet"> <!--load all styles -->
+
+</body>
+</html>

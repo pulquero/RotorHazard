@@ -1,0 +1,135 @@
+html {
+	background: transparent;
+	color: #000;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-size: 1.2em;
+	font-family: sans-serif;
+	margin: 0;
+	padding: 0;
+}
+
+#position {
+
+}
+
+#pilot-info {
+	background: #060818;
+	color: #fff;
+
+
+	font-size: 2.5rem;
+	line-height: 1;
+	padding: 0.25em;
+	height: 1em;
+
+	position: absolute;
+	top: 0;
+	left: 6rem;
+	right: 0;
+
+	display: flex;
+	
+}
+
+
+
+#rank_stat {
+	flex: 0 0 auto;
+}
+
+#current_laps {
+	position: absolute;
+	top: 4rem;
+	padding: 0.25rem 0.5rem;
+	right: 0;
+	text-align: right;
+	font-size: 2rem;
+	color: #fff;
+	text-shadow:
+		0.07em 0.07em 0 #000,
+		0.13em 0.07em 0 #000,
+		0.07em 0.13em 0 #000,
+		0.13em 0.13em 0 #000,
+		-0.03em -0.03em 0 #000,
+		0.03em -0.03em 0 #000,
+		-0.03em 0.03em 0 #000,
+		0.03em 0.03em 0 #000;
+}
+
+.display_lap_number {
+	padding-right: 0.5em;
+	font-size: 0.8em;
+}
+
+.fastest_lap {
+	color: hsl(25, 85%, 55%);
+	color: hsl(var(--hue_1), var(--sat_1), var(--lum_1_high));
+
+	text-shadow:
+		0.07em 0.07em 0 var(--contrast_1_high),
+		0.13em 0.07em 0 var(--contrast_1_high),
+		0.07em 0.13em 0 var(--contrast_1_high),
+		0.13em 0.13em 0 var(--contrast_1_high),
+		-0.03em -0.03em 0 var(--contrast_1_high),
+		0.03em -0.03em 0 var(--contrast_1_high),
+		-0.03em 0.03em 0 var(--contrast_1_high),
+		0.03em 0.03em 0 var(--contrast_1_high);
+}
+
+
+
+
+.pilot_header {
+	background-image: url('/static/ddr/img/streamnode_userbg.png');
+	width: 100%;
+	height: 120px;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: -8px -4px;
+}
+
+
+.pilot_position {
+	width: 110px;
+	height: calc(110px - 24px);
+	/*background-color: rgba(120, 120, 120, 0.42);*/
+	font-family: 'Teko', sans-serif;
+	font-weight: 600;
+	text-align: center;
+	color: white;
+	font-size: 46px;
+	padding-top: 24px;
+	float: left;
+}
+
+.pilot_callsign	{
+	font-family: 'Teko', sans-serif;
+	font-size: 34px;
+	color: white;
+	padding-left: 46px;	
+	padding-top: 38px;
+	float: left;
+	width: 280px;
+}
+
+.pilot_rankstat {
+	font-size: 24px;
+	padding-top: 48px;
+	padding-left: 10px;
+	color: white;
+	
+}
+
+
+.page-streamnode {
+	display: none;
+}
+
+
+
+
+
