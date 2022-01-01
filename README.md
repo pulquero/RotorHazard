@@ -27,7 +27,7 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
 * Connect other systems to extend functionality via MQTT or JSON API
 * Send realtime lap data to LiveTime
 
-## Improvements
+## Improvements (over RotorHazard 3.0)
 
 * Lap detection based on topological signal processing (persistent homology).
 * Auto-calibration/tuning of nodes:
@@ -35,25 +35,41 @@ A multi-node radio frequency race timing system for FPV drone racing with event 
     * Unsupervised learning (gradient descent).
 * Multi-frequency node support on Arduino Nanos (track more than one frequency per node).
 * MQTT protocol.
-* Frequency band scanner (UI and standalone tool).
-* Support for server (e.g. Raspberry Pi) audio output (e.g. bluetooth speaker).
-* Link pilots with their MultiGP or iFPV accounts.
-* Sync race events with iFPV.
-* BDRA race formats.
-* Sensor alarms (for INA219, BME280, etc).
-* More host sensors for Linux/Windows systems.
+* BDRA race formats, including "Grace period" (eg 30 seconds) after Time.
 * Command line options to specify configuration file and database.
-* Support for multiple I2C buses.
-* Software-in-the-loop node code.
-* Nodes-over-sockets.
-* Support for Chorus hardware/software.
-* Support for LapRF hardware.
-* Support for multiple LiveTime protocols (Delta 5 and Chorus).
-* Cloud-based UI.
+* GZip as well as Zip encoding
+* WiFi OTA support
+* Race metrics
+* Pluggable Leaderboards
 * Test coverage.
+* Continuous Integration (CI)
 * ...and a massive code clean-up!
 
+## Extensions (over RotorHazard 3.0)
 
+* Support for Arduino-based nodes
+* Support for STM32-based nodes
+* Support for ESP32/ESP8266/M5Stack-based nodes
+* Support for Chorus hardware/software.
+* Support for LapRF hardware, with specific User Interface.
+* Sensor alarms (for INA219, BME280, etc).
+* More host sensors for Linux/Windows systems.
+* Support for multiple I2C buses.
+* Nodes-over-sockets.
+* Software-in-the-loop node code.
+* Support for multiple LiveTime protocols (Delta 5 and Chorus).
+* Support for server (e.g. Raspberry Pi) audio output (e.g. bluetooth speaker).
+* Link pilots with their MultiGP or iFPV accounts.
+* Support for syncing MultiGP events
+* Sync race events with iFPV.
+* Cloud-based UI.
+* Frequency band scanner (UI and standalone tool).
+
+## Under Development
+
+* Server in the Cloud
+* Track Layout UI - including features like Track Editor, drag and drop, GPS position, Unlimited Gate node management over MQTT
+* Race Management
 
 ## Quick start
 
@@ -61,6 +77,7 @@ To install/upgrade:
 ```
 ./install.sh
 ```
+(Note: this script is currently designed for Raspberry Pi Raspbian, but can be adapted for other Operating systems and server hardware )
 (Can take a long time if your system is out-of-date).
 
 To run the server:
