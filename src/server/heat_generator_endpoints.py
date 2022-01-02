@@ -8,7 +8,7 @@ rng = default_rng()
 def createBlueprint(RHData):
     APP = Blueprint('heat_generator', __name__)
 
-    @APP.route('/heat-generators/random', methods=['GET'])
+    @APP.route('/heat-generators/random')
     def random_get():
         return {
             "parameters": [
@@ -38,7 +38,7 @@ def createBlueprint(RHData):
             heats.append({'name': 'Heat '+str(len(heats)+1), 'class': race_class, 'seats': seats})
         return {'type': 'Random', 'heats': heats}
 
-    @APP.route('/heat-generators/mains', methods=['GET'])
+    @APP.route('/heat-generators/mains')
     def mains_get():
         return {
             "parameters": [
@@ -99,7 +99,7 @@ def createBlueprint(RHData):
         mains.reverse()
         return {'type': 'Mains', 'heats': mains, 'leaderboards': {mains_class: {'method': 'best'}}}
 
-    @APP.route('/heat-generators/mgp-brackets', methods=['GET'])
+    @APP.route('/heat-generators/mgp-brackets')
     def mgp_brackets_get():
         return {
             "parameters": [
@@ -120,6 +120,50 @@ def createBlueprint(RHData):
         bracket = int(data['bracket'])
         leaderboards = racex.export_leaderboard(RHData)
         return mgp_brackets(leaderboards, stage_idx, results_class, mains_class, n_seats, bracket)
+
+    @APP.route('/heat-generators/fai-single-16')
+    def fai_single_16_get():
+        return {
+            "parameters": [
+                {"name": "resultsClass", "label": "Results class", "type": "class"},
+                {"name": "mainsClass", "label": "Mains class", "type": "class"},
+                {"name": "seats", "label": "Seats", "type": "seats"},
+                {"name": "bracket", "label": "Bracket", "type": "integer", "default": 1, "min": 1, "max": 3}
+            ]
+        }
+
+    @APP.route('/heat-generators/fai-single-16', methods=['POST'])
+    def fai_single_16_post():
+        data = request.get_json()
+        stage_idx = data['stage']
+        results_class = data['resultsClass']
+        mains_class = data['mainsClass']
+        n_seats = int(data['seats'])
+        bracket = int(data['bracket'])
+        leaderboards = racex.export_leaderboard(RHData)
+        return fai_single_brackets_16(leaderboards, stage_idx, results_class, mains_class, n_seats, bracket)
+
+    @APP.route('/heat-generators/fai-double-16')
+    def fai_double_16_get():
+        return {
+            "parameters": [
+                {"name": "resultsClass", "label": "Results class", "type": "class"},
+                {"name": "mainsClass", "label": "Mains class", "type": "class"},
+                {"name": "seats", "label": "Seats", "type": "seats"},
+                {"name": "bracket", "label": "Bracket", "type": "integer", "default": 1, "min": 1, "max": 6}
+            ]
+        }
+
+    @APP.route('/heat-generators/fai-double-16', methods=['POST'])
+    def fai_double_16_post():
+        data = request.get_json()
+        stage_idx = data['stage']
+        results_class = data['resultsClass']
+        mains_class = data['mainsClass']
+        n_seats = int(data['seats'])
+        bracket = int(data['bracket'])
+        leaderboards = racex.export_leaderboard(RHData)
+        return fai_double_brackets_16(leaderboards, stage_idx, results_class, mains_class, n_seats, bracket)
 
     return APP
 
@@ -173,7 +217,99 @@ def mgp_brackets(leaderboards, stage_idx, results_class, mains_class, n_seats, b
              ]
         }
     ]
+    leaderboard_positions = [
+        (14,1), (14,2), (14,3), (14,4),
+        (13,3), (13,4), (12,3), (12,4),
+        (10,3), (10,4), (9,3), (9,4),
+        (5,3), (5,4), (7,3), (7,4)
+    ]
+    return brackets(leaderboards, stage_idx, results_class, mains_class, n_seats, bracket, seeding_table, leaderboard_positions)
 
+
+def fai_single_brackets_16(leaderboards, stage_idx, results_class, mains_class, n_seats, bracket):
+    '''
+    https://www.fai.org/sites/default/files/ciam/wcup_drones/sc4_vol_f9_dronesport_2021.pdf
+    '''
+
+    # 1-index based!
+    seeding_table = [
+        [[16,1,8,9], [13,4,5,12], [14,3,6,10], [15,2,7,11]],
+        {'previous_races': 4,
+         'race_offset': 5,
+         'races': [
+             # (race, position)
+             [(1,2),(1,1),(2,1),(2,2)],
+             [(3,2),(3,1),(4,1),(4,2)]
+             ]
+        },
+        {'previous_races': 2,
+         'race_offset': 7,
+         'races': [
+             [(5,4),(5,3),(6,3),(6,4)],
+             [(5,2),(5,1),(6,1),(6,2)],
+             ]
+        }
+    ]
+    leaderboard_positions = [
+        (8,1), (8,2), (8,3), (8,4),
+        (7,1), (7,2), (7,3), (7,4)
+    ]
+    return brackets(leaderboards, stage_idx, results_class, mains_class, n_seats, bracket, seeding_table, leaderboard_positions)
+
+
+def fai_double_brackets_16(leaderboards, stage_idx, results_class, mains_class, n_seats, bracket):
+    '''
+    https://www.fai.org/sites/default/files/ciam/wcup_drones/sc4_vol_f9_dronesport_2021.pdf
+    '''
+
+    # 1-index based!
+    seeding_table = [
+        [[16,1,8,9], [13,4,5,12], [14,3,6,10], [15,2,7,11]],
+        {'previous_races': 4,
+         'race_offset': 5,
+         'races': [
+             # (race, position)
+             [(1,4),(2,3),(3,3),(4,4)],
+             [(2,4),(1,3),(4,3),(3,4)],
+             [(1,2),(1,1),(2,1),(2,2)],
+             [(3,2),(3,1),(4,1),(4,2)]
+             ]
+        },
+        {'previous_races': 4,
+         'race_offset': 9,
+         'races': [
+             [(8,4),(6,2),(5,1),(7,3)],
+             [(7,4),(5,2),(6,1),(8,3)],
+             ]
+        },
+        {'previous_races': 4,
+         'race_offset': 11,
+         'races': [
+             [(9,2),(9,1),(10,1),(10,2)],
+             [(7,2),(7,1),(8,1),(8,2)],
+             ]
+        },
+        {'previous_races': 2,
+         'race_offset': 13,
+         'races': [
+             [(12,4),(11,2),(11,1),(12,3)]
+             ]
+        },
+        {'previous_races': 2,
+         'race_offset': 14,
+         'races': [
+             [(13,2),(12,2),(12,1),(13,1)]
+             ]
+        }
+    ]
+    leaderboard_positions = [
+        (14,1), (14,2), (14,3), (14,4),
+        (13,3), (13,4), (11,3), (11,4)
+    ]
+    return brackets(leaderboards, stage_idx, results_class, mains_class, n_seats, bracket, seeding_table, leaderboard_positions)
+
+
+def brackets(leaderboards, stage_idx, results_class, mains_class, n_seats, bracket, seeding_table, leaderboard_positions):
     stages = leaderboards['stages']
 
     mains = []
@@ -212,14 +348,8 @@ def mgp_brackets(leaderboards, stage_idx, results_class, mains_class, n_seats, b
     else:
         raise ValueError("Invalid bracket: {}".format(bracket))
 
-    bracket_heats = {'type': 'MultiGP bracket '+str(bracket), 'heats': mains}
+    bracket_heats = {'type': 'Bracket '+str(bracket), 'heats': mains}
     if bracket == len(seeding_table):
-        leaderboard_positions = [
-            (14,1), (14,2), (14,3), (14,4),
-            (13,3), (13,4), (12,3), (12,4),
-            (10,3), (10,4), (9,3), (9,4),
-            (5,3), (5,4), (7,3), (7,4)
-        ]
         bracket_heats['leaderboards'] = {mains_class: {'method': 'heatPositions', 'heatPositions': leaderboard_positions}}
     return bracket_heats
 
