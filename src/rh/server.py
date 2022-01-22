@@ -1,10 +1,10 @@
 '''RotorHazard server script'''
 from interface.RHInterface import RHInterface, RHFEAT_PH
-RELEASE_VERSION = "3.1.2-dev.1" # Public release version code
-SERVER_API = 32+8 # Server API version
-NODE_API_SUPPORTED = 18 # Minimum supported node version
-NODE_API_BEST = 35 # Most recent node API
-JSON_API = 3 # JSON API version
+RELEASE_VERSION = "3.1.2-dev.1"  # Public release version code
+SERVER_API = 32+8  # Server API version
+NODE_API_SUPPORTED = 36  # Minimum supported node version
+NODE_API_BEST = 36  # Most recent node API
+JSON_API = 3  # JSON API version
 
 # This must be the first import for the time being. It is
 # necessary to set up logging *before* anything else
@@ -4394,10 +4394,10 @@ def pass_record_callback(node, lap_race_time, source):
     lap_time_stamp = round(lap_race_time * 1000) # store as milliseconds
 
     if logger.getEffectiveLevel() <= logging.DEBUG:
-        enter_fmtstr = RHUtils.time_format((node.enter_at_timestamp-RACE.start_time_monotonic)*1000, \
+        enter_fmtstr = RHUtils.time_format(node.enter_at_timestamp*1000, \
                                            RHData.get_option('timeFormat')) \
                        if node.enter_at_timestamp else "-"
-        exit_fmtstr = RHUtils.time_format((node.exit_at_timestamp-RACE.start_time_monotonic)*1000, \
+        exit_fmtstr = RHUtils.time_format(node.exit_at_timestamp*1000, \
                                           RHData.get_option('timeFormat')) \
                        if node.exit_at_timestamp else "-"
         logger.debug('Raw pass record: node: {0}, lap timestamp: {1} (enter: {3}, exit: {4}, duration: {5}), source: {2}' \

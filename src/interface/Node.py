@@ -177,7 +177,7 @@ class NodeManager(CommandsWithRetry):
         pass
 
     def get_disabled_frequency(self):
-        return 5800
+        return 0
 
     def __enter__(self):
         self.lock.__enter__()
@@ -201,6 +201,7 @@ class Node(CommandsWithRetry):
         self.frequency = 0
         self.bandChannel = None
         self.current_rssi = 0
+        self.current_lifetime = 0  # ph
         self.node_peak_rssi = 0
         self.node_nadir_rssi = manager.max_rssi_value
         self.pass_peak_rssi = 0
@@ -209,7 +210,7 @@ class Node(CommandsWithRetry):
         self.current_pilot_id = 0
         self.first_cross_flag = False
         self.show_crossing_flag = False
-        self._loop_time = 0 # microseconds
+        self._loop_time = 0  # microseconds
         self.crossing_flag = False
         self.pass_crossing_flag = False
         self.enter_at_timestamp = 0

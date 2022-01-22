@@ -1,7 +1,6 @@
 import unittest
 from interface import calculate_checksum, ExtremumFilter, RssiHistory
 from interface.MockInterface import MockInterface
-from interface.BaseHardwareInterface import PeakNadirHistory
 
 
 class InterfaceTest(unittest.TestCase):
@@ -35,45 +34,6 @@ class InterfaceTest(unittest.TestCase):
         actual_times, actual_values = history.get()
         self.assertListEqual(actual_times, [0,0.5,1,2,3])
         self.assertListEqual(actual_values, [5,8,3,9,7])
-
-    def test_peak_nadir_history_empty(self):
-        intf = MockInterface(1)
-        node = intf.nodes[0]
-        now = 100
-        pn = PeakNadirHistory(node, now)
-        self.assertTrue(pn.isEmpty())
-
-    def test_peak_nadir_history_peak_before_nadir(self):
-        intf = MockInterface(1)
-        node = intf.nodes[0]
-        now = 100
-        pn = PeakNadirHistory(node, now)
-        pn.peakRssi = 10
-        pn.nadirRssi = 1
-        pn.peakFirstTime = pn.peakLastTime = 8000
-        pn.nadirFirstTime = pn.nadirLastTime = 5000
-        history = RssiHistory()
-        pn.addTo(history)
-        history_times, history_values = history.get()
-        self.assertListEqual(history_times, [92, 95])
-        self.assertListEqual(history_values, [10, 1])
-
-    def test_peak_nadir_history_peak_before_nadir_extended(self):
-        intf = MockInterface(1)
-        node = intf.nodes[0]
-        now = 100
-        pn = PeakNadirHistory(node, now)
-        pn.peakRssi = 10
-        pn.nadirRssi = 1
-        pn.peakFirstTime = 9000
-        pn.peakLastTime = 8000
-        pn.nadirFirstTime = 6000
-        pn.nadirLastTime = 5000
-        history = RssiHistory()
-        pn.addTo(history)
-        history_times, history_values = history.get()
-        self.assertListEqual(history_times, [91, 92, 94, 95])
-        self.assertListEqual(history_values, [10, 10, 1, 1])
 
     def test_ai_calibrate_nodes(self):
         intf = MockInterface(1)
