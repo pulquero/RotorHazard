@@ -691,10 +691,6 @@ nodeModel.prototype = {
 }
 
 /* Data model for timer */
-const TONES_NONE = 0;
-const TONES_ONE = 1;
-const TONES_ALL = 2;
-const TONES_3_2_1 = 3;
 
 function timerModel() {
 	// interval control
@@ -713,11 +709,12 @@ function timerModel() {
 	};
 
 	this.running = false;
+	this.start_time = null; // timestamp for timer's start time
 	this.zero_time = null; // timestamp for timer's zero point
 	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
-	this.staging_tones = TONES_ALL; // sound tones during staging
-	this.max_delay = Infinity; // don't sound more tones than this even if staging takes longer
+	this.staging_tones = 0; // sound tones during staging
 	this.time_s = false; // simplified relative time in seconds
+	this.time_s_offset = null; // simplified offset time (from timer start)
 	this.count_up = false; // use fixed-length timer
 	this.duration = 0; // fixed-length duration, in seconds
 	this.allow_expire = false; // prevent expire callbacks until timer runs 1 loop
@@ -731,8 +728,11 @@ function timerModel() {
 	var self = this;
 
 	function step() { // timer control
-		var diff = window.performance.now() - self.zero_time;
+		var time = window.performance.now()
+		var diff = time - self.zero_time;
 		var continue_timer = true;
+
+		self.time_s_offset = Math.round((time - self.start_time) / 100) / 10;
 
 		if (diff > self.interval / -2) {
 			// time is positive or zero
@@ -821,7 +821,7 @@ function timerModel() {
 		}
 	}
 
-	this.start = function(remote_time_zero, local_remote_differential){
+	this.start = function(remote_time_zero, local_remote_differential, remote_time_start){
 		// reset simplified time and drift history
 		rotorhazard.timer.race.time_s = false;
 		this.drift_history = [];
@@ -830,6 +830,10 @@ function timerModel() {
 		// get sync if needed
 		if (typeof remote_time_zero !== "undefined" && typeof local_remote_differential !== "undefined") {
 			this.sync(remote_time_zero, local_remote_differential);
+		}
+
+		if (typeof remote_time_start !== "undefined" && typeof local_remote_differential !== "undefined") {
+			this.start_time = remote_time_start - local_remote_differential;
 		}
 
 		// start timing loop
@@ -1180,22 +1184,6 @@ rotorhazard.timer.deferred.callbacks.expire = function(timer){
 	$('.time-display').html(__('Wait'));
 }
 
-// race/staging timer callbacks
-rotorhazard.timer.race.callbacks.start = function(timer){
-	$('.time-display').html(timer.renderHTML());
-	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
-	if (timer.staging_tones == TONES_ONE
-		&& timer.max_delay >= 1) {
-		// beep on start if single staging tone
-		if (rotorhazard.use_mp3_tones) {
-			play_mp3_beep(sound_stage, rotorhazard.tone_volume);
-		}
-		else {
-			play_beep(100, 440, rotorhazard.tone_volume, 'triangle');
-		}
-	}
-}
-
 function playStageToneOnSecond(time_s){
 	if (time_s * 10 % 10 == 0) {
 		if (rotorhazard.use_mp3_tones) {
@@ -1206,28 +1194,19 @@ function playStageToneOnSecond(time_s){
 	}
 }
 
+// race/staging timer callbacks
+rotorhazard.timer.race.callbacks.start = function(timer){
+	$('.time-display').html(timer.renderHTML());
+	rotorhazard.timer.deferred.stop(); // cancel lower priority timer
+}
+
 rotorhazard.timer.race.callbacks.step = function(timer){
 	if (timer.warn_until < window.performance.now()) {
 		$('.timing-clock .warning').hide();
 	}
-	if (timer.time_s < 0
-		&& timer.time_s >= -timer.max_delay) {
-		// time before race begins (staging)
-		if (timer.hidden_staging
-			&& timer.staging_tones == TONES_ALL) {
-			// beep every second during staging if timer is hidden
-			playStageToneOnSecond(timer.time_s);
-		} else if (timer.time_s == -30
-			|| timer.time_s == -20
-			|| timer.time_s == -10) {
-			speak('<div>' + __l('Starting in') + ' ' + (-timer.time_s) + ' ' + __l('Seconds') + '</div>', true);
-		} else if (timer.staging_tones == TONES_ALL
-			&& timer.time_s >= -5) {
-			// staging beep for last 5 seconds before start
-			playStageToneOnSecond(timer.time_s);
-		} else if (timer.staging_tones == TONES_3_2_1
-			&& timer.time_s >= -3) {
-			playStageToneOnSecond(timer.time_s);
+	if (timer.time_s < 0) {
+		if (timer.time_s_offset < timer.staging_tones) {
+			playStageToneOnSecond(timer.time_s_offset);
 		}
 	} else if (timer.time_s == 0 ||
 		(!timer.count_up && timer.time_s == timer.duration)
@@ -1371,15 +1350,16 @@ function init_popup_generics() {
 function race_kickoff(msg) {
 	rotorhazard.timer.stopAll();
 
+	rotorhazard.staging_start_pi = (msg.pi_staging_at_s * 1000); // convert seconds (pi) to millis (JS)
 	rotorhazard.race_start_pi = (msg.pi_starts_at_s * 1000); // convert seconds (pi) to millis (JS)
 
 	rotorhazard.timer.race.hidden_staging = Boolean(msg.hide_stage_timer);
 	rotorhazard.timer.race.count_up = Boolean(msg.race_mode);
 	rotorhazard.timer.race.duration = msg.race_time_sec;
 
-	rotorhazard.timer.race.max_delay = msg.delay;
+	rotorhazard.timer.race.staging_tones = msg.staging_tones;
 
-	rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff);
+	rotorhazard.timer.race.start(rotorhazard.race_start_pi, rotorhazard.pi_time_diff, rotorhazard.staging_start_pi);
 }
 
 function phonetic_data_handler(msg) {

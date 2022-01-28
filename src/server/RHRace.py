@@ -21,10 +21,10 @@ class RHRace():
         # status
         self.race_status = RaceStatus.READY
         self.timer_running = False
+        self.stage_time_monotonic = 0 # race staging begins, monotonic
         self.start_time = 0 # datetime
-        self.start_time_monotonic = 0 # monotonic
+        self.start_time_monotonic = 0 # race start, monotonic
         self.start_time_epoch_ms = 0 # ms since 1970-01-01
-        self.start_time_delay_secs = 0 # random-length race-start delay
         self.node_laps = {} # current race lap objects, by node
         self.node_splits = {}
         self.node_has_finished = {}
