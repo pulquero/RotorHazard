@@ -430,25 +430,25 @@ class RHData():
                         for raceFormat in raceFormat_query_data:
 
                             if 'start_delay_min' in raceFormat and raceFormat['start_delay_min']:
-                                raceFormat['start_delay_min_tenths'] = raceFormat['start_delay_min'] * 10
+                                raceFormat['start_delay_min_ms'] = raceFormat['start_delay_min'] * 1000
                                 del raceFormat['start_delay_min']
 
                             if 'start_delay_max' in raceFormat and raceFormat['start_delay_max']:
-                                raceFormat['start_delay_max_tenths'] = raceFormat['start_delay_max'] * 10
+                                raceFormat['start_delay_max_ms'] = raceFormat['start_delay_max'] * 1000
                                 del raceFormat['start_delay_max']
 
                             if 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_ONE.value:
                                 raceFormat['staging_fixed_tones'] = 1
-                                if raceFormat['start_delay_min_tenths'] >= 10:
-                                    raceFormat['start_delay_min_tenths'] = raceFormat['start_delay_min_tenths'] - 10
-                                if raceFormat['start_delay_max_tenths'] >= 10:
-                                    raceFormat['start_delay_max_tenths'] = raceFormat['start_delay_max_tenths'] - 10
+                                if raceFormat['start_delay_min_ms'] >= 1000:
+                                    raceFormat['start_delay_min_ms'] -= 1000
+                                if raceFormat['start_delay_max_ms'] >= 1000:
+                                    raceFormat['start_delay_max_ms'] -= 1000
                                 raceFormat['staging_tones'] = StagingTones.TONES_NONE.value
 
                             if 'staging_tones' in raceFormat and raceFormat['staging_tones'] == StagingTones.TONES_3_2_1.value:
                                 raceFormat['staging_fixed_tones'] = 3
-                                raceFormat['start_delay_min_tenths'] = 1
-                                raceFormat['start_delay_max_tenths'] = 1
+                                raceFormat['start_delay_min_ms'] = 1000
+                                raceFormat['start_delay_max_ms'] = 1000
                                 raceFormat['staging_tones'] = StagingTones.TONES_NONE.value
 
                     self.restore_table(self._Database.RaceFormat, raceFormat_query_data, defaults={
@@ -457,8 +457,8 @@ class RHData():
                         'race_time_sec': 120,
                         'lap_grace_sec': 0,
                         'staging_fixed_tones': 0,
-                        'start_delay_min_tenths': 20,
-                        'start_delay_max_tenths': 50,
+                        'start_delay_min_ms': 2000,
+                        'start_delay_max_ms': 5000,
                         'staging_tones': StagingTones.TONES_ALL.value,
                         'number_laps_win': 0,
                         'win_condition': WinCondition.MOST_LAPS.value,
@@ -1254,8 +1254,8 @@ class RHData():
             race_mode=RaceMode.FIXED_TIME.value,
             race_time_sec=0,
             lap_grace_sec=0,
-            start_delay_min_tenths=10,
-            start_delay_max_tenths=10,
+            start_delay_min_ms=1000,
+            start_delay_max_ms=1000,
             staging_tones=StagingTones.TONES_NONE.value,
             number_laps_win=0,
             win_condition=WinCondition.NONE.value,
@@ -1274,9 +1274,9 @@ class RHData():
             if 'lap_grace_sec' in init:
                 race_format.lap_grace_sec = init['lap_grace_sec']
             if 'start_delay_min' in init:
-                race_format.start_delay_min_tenths = init['start_delay_min']
+                race_format.start_delay_min_ms = init['start_delay_min']
             if 'start_delay_max' in init:
-                race_format.start_delay_max_tenths = init['start_delay_max']
+                race_format.start_delay_max_ms = init['start_delay_max']
             if 'staging_tones' in init:
                 race_format.staging_tones = init['staging_tones']
             if 'number_laps_win' in init:
@@ -1306,8 +1306,8 @@ class RHData():
             race_mode=source_format.race_mode,
             race_time_sec=source_format.race_time_sec,
             lap_grace_sec=source_format.lap_grace_sec,
-            start_delay_min_tenths=source_format.start_delay_min_tenths,
-            start_delay_ma_tenthsx=source_format.start_delay_max_tenths,
+            start_delay_min_ms=source_format.start_delay_min_ms,
+            start_delay_max_ms=source_format.start_delay_max_ms,
             staging_tones=source_format.staging_tones,
             number_laps_win=source_format.number_laps_win,
             win_condition=source_format.win_condition,
@@ -1342,9 +1342,9 @@ class RHData():
         if 'staging_fixed_tones' in data:
             race_format.staging_fixed_tones = data['staging_fixed_tones']
         if 'start_delay_min' in data:
-            race_format.start_delay_min_tenths = data['start_delay_min']
+            race_format.start_delay_min_ms = data['start_delay_min']
         if 'start_delay_max' in data:
-            race_format.start_delay_max_tenths = data['start_delay_max']
+            race_format.start_delay_max_ms = data['start_delay_max']
         if 'staging_tones' in data:
             race_format.staging_tones = data['staging_tones']
         if 'number_laps_win' in data:
@@ -1448,8 +1448,8 @@ class RHData():
                     'race_time_sec': race_format['race_time_sec'],
                     'lap_grace_sec': race_format['lap_grace_sec'],
                     'staging_fixed_tones': race_format['staging_fixed_tones'],
-                    'start_delay_min_tenths': race_format['start_delay_min_tenths'],
-                    'start_delay_max_tenths': race_format['start_delay_max_tenths'],
+                    'start_delay_min_ms': race_format['start_delay_min_ms'],
+                    'start_delay_max_ms': race_format['start_delay_max_ms'],
                     'staging_tones': StagingTones[race_format['staging_tones']].value,
                     'number_laps_win': race_format['number_laps_win'],
                     'win_condition': WinCondition[race_format['win_condition']].value,

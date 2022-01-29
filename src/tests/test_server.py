@@ -171,8 +171,8 @@ class ServerTest(unittest.TestCase):
             'format_name': 'Test ' + str(datetime.now()),
             'race_mode': RHRace.RaceMode.FIXED_TIME,
             'race_time_sec': 33,
-            'start_delay_min_tenths': 1,
-            'start_delay_max_tenths': 4,
+            'start_delay_min_ms': 1,
+            'start_delay_max_ms': 4,
             'number_laps_win': 5,
             'win_condition': RHRace.WinCondition.FIRST_TO_LAP_X,
             'team_racing_mode': True
@@ -182,8 +182,8 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['format_name'], data['format_name'])
         self.assertEqual(resp['race_mode'], data['race_mode'])
         self.assertEqual(resp['race_time_sec'], data['race_time_sec'])
-        self.assertEqual(resp['start_delay_min_tenths'], data['start_delay_min_tenths'])
-        self.assertEqual(resp['start_delay_max_tenths'], data['start_delay_max_tenths'])
+        self.assertEqual(resp['start_delay_min_ms'], data['start_delay_min_ms'])
+        self.assertEqual(resp['start_delay_max_ms'], data['start_delay_max_ms'])
         self.assertEqual(resp['number_laps_win'], data['number_laps_win'])
         self.assertEqual(resp['win_condition'], data['win_condition'])
         self.assertEqual(resp['team_racing_mode'], data['team_racing_mode'])

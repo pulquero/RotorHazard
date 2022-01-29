@@ -328,14 +328,14 @@ def setCurrentRaceFormat(race_format, **kwargs):
 
 
 class RHRaceFormat():
-    def __init__(self, name, race_mode, race_time_sec, lap_grace_sec, staging_fixed_tones, start_delay_min_tenths, start_delay_max_tenths, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
+    def __init__(self, name, race_mode, race_time_sec, lap_grace_sec, staging_fixed_tones, start_delay_min_ms, start_delay_max_ms, staging_tones, number_laps_win, win_condition, team_racing_mode, start_behavior):
         self.name = name
         self.race_mode = race_mode
         self.race_time_sec = race_time_sec
         self.lap_grace_sec = lap_grace_sec
         self.staging_fixed_tones = staging_fixed_tones
-        self.start_delay_min_tenths = start_delay_min_tenths
-        self.start_delay_max_tenths = start_delay_max_tenths
+        self.start_delay_min_ms = start_delay_min_ms
+        self.start_delay_max_ms = start_delay_max_ms
         self.staging_tones = staging_tones
         self.number_laps_win = number_laps_win
         self.win_condition = win_condition
@@ -349,8 +349,8 @@ class RHRaceFormat():
                             race_time_sec=race_format.race_time_sec,
                             lap_grace_sec=race_format.lap_grace_sec,
                             staging_fixed_tones=race_format.staging_fixed_tones,
-                            start_delay_min_tenths=race_format.start_delay_min_tenths,
-                            start_delay_max_tenths=race_format.start_delay_max_tenths,
+                            start_delay_min_ms=race_format.start_delay_min_ms,
+                            start_delay_max_ms=race_format.start_delay_max_ms,
                             staging_tones=race_format.staging_tones,
                             number_laps_win=race_format.number_laps_win,
                             win_condition=race_format.win_condition,
@@ -2167,27 +2167,27 @@ def on_stage_race():
         emit_race_status()
         emit_race_format()
 
-        staging_fixed_tenths = (0 if race_format.staging_fixed_tones <= 1 else race_format.staging_fixed_tones - 1) * 10
+        staging_fixed_ms = (0 if race_format.staging_fixed_tones <= 1 else race_format.staging_fixed_tones - 1) * 1000
 
-        MIN = min(race_format.start_delay_min_tenths, race_format.start_delay_max_tenths)  # in case values are reversed
-        MAX = max(race_format.start_delay_min_tenths, race_format.start_delay_max_tenths)
-        staging_random_tenths = random.randint(MIN, MAX)
+        MIN = min(race_format.start_delay_min_ms, race_format.start_delay_max_ms)  # in case values are reversed
+        MAX = max(race_format.start_delay_min_ms, race_format.start_delay_max_ms)
+        staging_random_ms = random.randint(MIN, MAX)
         hide_stage_timer = MIN != MAX
 
-        staging_total_tenths = staging_fixed_tenths + staging_random_tenths
+        staging_total_ms = staging_fixed_ms + staging_random_ms
 
         if race_format.staging_tones == StagingTones.TONES_NONE:
-            if staging_total_tenths > 0:
+            if staging_total_ms > 0:
                 staging_tones = race_format.staging_fixed_tones
             else:
-                staging_tones = staging_fixed_tenths / 10
+                staging_tones = staging_fixed_ms / 1000
         else:
-            staging_tones = (staging_fixed_tenths + staging_random_tenths) // 10
-            if staging_random_tenths % 10:
+            staging_tones = (staging_fixed_ms + staging_random_ms) // 1000
+            if staging_random_ms % 1000:
                 staging_tones += 1
 
         RACE.stage_time_monotonic = monotonic() + RHRace.RACE_START_DELAY_EXTRA_SECS
-        RACE.start_time_monotonic = RACE.stage_time_monotonic + ((staging_fixed_tenths + staging_random_tenths) / 10 )
+        RACE.start_time_monotonic = RACE.stage_time_monotonic + ((staging_fixed_ms + staging_random_ms) / 1000 )
 
         RACE.start_time_epoch_ms = PROGRAM_START.monotonic_to_epoch_millis(RACE.start_time_monotonic)
         RACE.start_token = random.random()
@@ -3179,7 +3179,7 @@ def emit_race_status(**params):
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'race_staging_tones': race_format.staging_tones,
-            'hide_stage_timer': race_format.start_delay_min_tenths != race_format.start_delay_max_tenths,
+            'hide_stage_timer': race_format.start_delay_min_ms != race_format.start_delay_max_ms,
             'pi_starts_at_s': RACE.start_time_monotonic
         }
     if ('nobroadcast' in params):
@@ -3396,8 +3396,8 @@ def emit_race_format(**params):
         'race_time_sec': race_format.race_time_sec,
         'lap_grace_sec': race_format.lap_grace_sec,
         'staging_fixed_tones': race_format.staging_fixed_tones,
-        'start_delay_min': race_format.start_delay_min_tenths,
-        'start_delay_max': race_format.start_delay_max_tenths,
+        'start_delay_min': race_format.start_delay_min_ms,
+        'start_delay_max': race_format.start_delay_max_ms,
         'staging_tones': race_format.staging_tones,
         'number_laps_win': race_format.number_laps_win,
         'win_condition': race_format.win_condition,
@@ -3422,8 +3422,8 @@ def emit_race_formats(**params):
             'race_mode': race_format.race_mode,
             'race_time_sec': race_format.race_time_sec,
             'lap_grace_sec': race_format.lap_grace_sec,
-            'start_delay_min': race_format.start_delay_min_tenths,
-            'start_delay_max': race_format.start_delay_max_tenths,
+            'start_delay_min': race_format.start_delay_min_ms,
+            'start_delay_max': race_format.start_delay_max_ms,
             'staging_tones': race_format.staging_tones,
             'number_laps_win': race_format.number_laps_win,
             'win_condition': race_format.win_condition,
@@ -3749,8 +3749,8 @@ def emit_class_data(**params):
         raceformat['race_mode'] = race_format.race_mode
         raceformat['race_time_sec'] = race_format.race_time_sec
         raceformat['lap_grace_sec'] = race_format.lap_grace_sec
-        raceformat['start_delay_min'] = race_format.start_delay_min_tenths
-        raceformat['start_delay_max'] = race_format.start_delay_max_tenths
+        raceformat['start_delay_min'] = race_format.start_delay_min_ms
+        raceformat['start_delay_max'] = race_format.start_delay_max_ms
         raceformat['staging_tones'] = race_format.staging_tones
         raceformat['number_laps_win'] = race_format.number_laps_win
         raceformat['win_condition'] = race_format.win_condition
@@ -5491,8 +5491,8 @@ SECONDARY_RACE_FORMAT = RHRaceFormat(name="Secondary",
                          race_time_sec=0,
                          lap_grace_sec=0,
                          staging_fixed_tones=0,
-                         start_delay_min_tenths=10,
-                         start_delay_max_tenths=10,
+                         start_delay_min_ms=1000,
+                         start_delay_max_ms=1000,
                          staging_tones=0,
                          number_laps_win=0,
                          win_condition=RHRace.WinCondition.NONE,

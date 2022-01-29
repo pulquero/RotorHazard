@@ -714,7 +714,7 @@ function timerModel() {
 	this.hidden_staging = false; // display 'ready' message instead of showing time remaining
 	this.staging_tones = 0; // sound tones during staging
 	this.time_s = false; // simplified relative time in seconds
-	this.time_s_offset = null; // simplified offset time (from timer start)
+	this.time_s_offset = null; // simplified offset time (for staging)
 	this.count_up = false; // use fixed-length timer
 	this.duration = 0; // fixed-length duration, in seconds
 	this.allow_expire = false; // prevent expire callbacks until timer runs 1 loop

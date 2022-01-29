@@ -1488,9 +1488,9 @@
 			$('#set_hide_stage_timer').prop('disabled', msg.locked);
 			$('#set_staging_fixed_tones').val(msg.staging_fixed_tones);
 			$('#set_staging_fixed_tones').prop('disabled', msg.locked);
-			$('#set_start_delay_min').val(msg.start_delay_min / 10); // convert from tenths
+			$('#set_start_delay_min').val(msg.start_delay_min / 1000); // convert from ms
 			$('#set_start_delay_min').prop('disabled', msg.locked);
-			$('#set_start_delay_max').val(msg.start_delay_max / 10); // convert from tenths
+			$('#set_start_delay_max').val(msg.start_delay_max / 1000); // convert from ms
 			$('#set_start_delay_max').prop('disabled', msg.locked);
 			$('#set_staging_tones').val(msg.staging_tones);
 			$('#set_staging_tones').prop('disabled', msg.locked);
@@ -1568,14 +1568,14 @@
 
 		$('#set_start_delay_min').change(function (event) {
 			var data = {
-				start_delay_min: parseInt($(this).val() * 10) // convert to tenths
+				start_delay_min: parseInt($(this).val() * 1000) // convert to ms
 			};
 			socket.emit('alter_race_format', data);
 		})
 
 		$('#set_start_delay_max').change(function (event) {
 			var data = {
-				start_delay_max: parseInt($(this).val() * 10) // convert to tenths
+				start_delay_max: parseInt($(this).val() * 1000) // convert to ms
 			};
 			socket.emit('alter_race_format', data);
 		})
