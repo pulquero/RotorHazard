@@ -82,6 +82,7 @@ class BaseHardwareInterface:
         self.listener = listener if listener is not None else BaseHardwareInterfaceListener()
         self.pass_count_mask = 0xFF
         self.intf_error_report_limit = 0.0  # log if ratio of comm errors is larger
+        self.sent_history = {} # history provided
 
     def start(self):
         if self.update_thread is None:
@@ -468,14 +469,38 @@ class BaseHardwareInterface:
     #
 
     def get_heartbeat_json(self):
-        json = {
-            'current_rssi': [node.current_rssi.rssi if not node.scan_enabled else 0 for node in self.nodes],
-            'current_lifetime': [node.current_lifetime.lifetime if not node.scan_enabled else 0 for node in self.nodes],
-            'frequency': self.get_node_frequencies(),
-            'loop_time': [node.loop_time if not node.scan_enabled else 0 for node in self.nodes],
-            'crossing_flag': [node.is_crossing if not node.scan_enabled else False for node in self.nodes]
+        json = []
+        for idx, node in self.nodes:
+            history_times, history_values = node.history.get()
+            try:
+                time_index = history_times.index(self.sent_history[idx])
+                if len(history_times[time_index:]) > 1:
+                    time_index += 1
+            except ValueError:
+                time_index = 0
+
+            json.append({
+                'current_rssi': node.current_rssi.rssi if not node.scan_enabled else 0,
+                'history_times': history_times[time_index:],
+                'history_values': history_values[time_index:],
+                'current_lifetime': node.current_lifetime.lifetime if not node.scan_enabled else 0,
+                'frequency': node.frequency,
+                'loop_time': node.loop_time if not node.scan_enabled else 0,
+                'crossing_flag': node.is_crossing if not node.scan_enabled else False
+            })
+            self.sent_history[idx] = history_times[-1]
+
+        #flatten payload (livetime compatibility)
+        payload = {
+            'current_rssi': [node.current_rssi for node in json],
+            'history_times': [node.history_times for node in json],
+            'history_values': [node.history_values for node in json],
+            'current_lifetime': [node.current_lifetime for node in json],
+            'frequency': [node.frequency for node in json],
+            'loop_time': [node.loop_time for node in json],
+            'crossing_flag': [node.is_crossing for node in json]
         }
-        return json
+        return payload
 
     def get_frequency_json(self, node_index):
         node = self.nodes[node_index]

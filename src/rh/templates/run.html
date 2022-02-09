@@ -332,11 +332,15 @@
 						}
 
 						if (rotorhazard.nodes[i].graphing) {
-							rotorhazard.nodes[i].series.append(new Date().getTime(), rssiValue);
+							var now = new Date().getTime()
+							
+							for (var h in msg.history_values) {
+								rotorhazard.nodes[i].series.append(msg.history_times[h] - rotorhazard.pi_time_diff, msg.history_values[h]);								
+							}
 							if (msg.crossing_flag[i]) {
-								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), 500);
+								rotorhazard.nodes[i].crossingSeries.append(now, 500);
 							} else{
-								rotorhazard.nodes[i].crossingSeries.append(new Date().getTime(), -10);
+								rotorhazard.nodes[i].crossingSeries.append(now, -10);
 							}
 						}
 					}
