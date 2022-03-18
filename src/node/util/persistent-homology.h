@@ -6,10 +6,10 @@
 struct ConnectedComponent {
     uint8_t birth = 0;
     uint8_t death = 0;
-    inline uint_fast8_t peakLifetime(rssi_t phData[]) {
+    inline uint_fast8_t peakLifetime(const rssi_t phData[]) const {
         return phData[birth] - phData[death];
     }
-    inline uint_fast8_t nadirLifetime(rssi_t phData[]) {
+    inline uint_fast8_t nadirLifetime(const rssi_t phData[]) const {
         return phData[death] - phData[birth];
     }
 };

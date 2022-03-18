@@ -45,7 +45,7 @@ public:
 	}
 
 
-	void addValue(T new_value) {
+	void addValue(const T new_value) {
 		if (_unfilled != 0)
 			_unfilled--;
 

@@ -17,7 +17,7 @@ constexpr uint8_t POWER_DOWN_CONTROL_REGISTER = 0x0A;
 constexpr uint8_t STATE_REGISTER = 0x0F;
 
 // Calculate rx5808 register hex value for given frequency in MHz
-static uint16_t freqMhzToRegVal(freq_t freqInMhz)
+static uint16_t freqMhzToRegVal(const freq_t freqInMhz)
 {
     uint16_t tf, N, A;
     tf = (freqInMhz - 479) / 2;
@@ -26,7 +26,7 @@ static uint16_t freqMhzToRegVal(freq_t freqInMhz)
     return (N << 7) + A;
 }
 
-void RxModule::init(uint8_t dataPin, uint8_t clkPin, uint8_t selPin, uint8_t rssiPin)
+void RxModule::init(const uint8_t dataPin, const uint8_t clkPin, const uint8_t selPin, const uint8_t rssiPin)
 {
     this->dataPin = dataPin;
     this->clkPin = clkPin;
@@ -44,7 +44,7 @@ void RxModule::reset()
 }
 
 // Set the frequency given on the rx5808 module
-void RxModule::setFrequency(freq_t frequency)
+void RxModule::setFrequency(const freq_t frequency)
 {
     // Get the hex value to send to the rx module
     uint16_t vtxHex = freqMhzToRegVal(frequency);
@@ -55,7 +55,7 @@ void RxModule::setFrequency(freq_t frequency)
 }
 
 // Set power options on the rx5808 module
-void RxModule::setPower(uint32_t options)
+void RxModule::setPower(const uint32_t options)
 {
     spiWrite(POWER_DOWN_CONTROL_REGISTER, options);
 }
@@ -102,7 +102,7 @@ void BitBangRxModule::spiInit()
     digitalWrite(dataPin, LOW);
 }
 
-void BitBangRxModule::spiWrite(uint8_t addr, uint32_t data)
+void BitBangRxModule::spiWrite(const uint8_t addr, const uint32_t data)
 {
     delayMicroseconds(SPI_CHILL_TIME); // Delay between writes
     digitalWrite(selPin, LOW); // Enable chip select
@@ -146,7 +146,7 @@ void NativeRxModule::spiInit()
     SPI.begin(clkPin, -1, dataPin);
 }
 
-void NativeRxModule::spiWrite(uint8_t addr, uint32_t data)
+void NativeRxModule::spiWrite(const uint8_t addr, const uint32_t data)
 {
     uint32_t payload = addr | (1 << 4) | (data << 5);
     // SPI clock speed should be 100KHz

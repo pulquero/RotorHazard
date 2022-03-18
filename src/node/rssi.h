@@ -19,7 +19,7 @@
 #include "util/unified-sendbuffer.h"
 
 constexpr uint16_t MAX_DURATION = 0xFFFF;
-inline uint16_t toDuration(uint32_t ms) { return uint16_t(min(ms, uint32_t(MAX_DURATION))); }
+inline uint16_t toDuration(const uint32_t ms) { return uint16_t(min(ms, uint32_t(MAX_DURATION))); }
 
 #if TARGET == AVR_TARGET
 constexpr uint8_t HISTORY_SIZE = 12;
@@ -185,7 +185,7 @@ public:
     inline void bufferPeak() {bufferPeak(false);};
     inline void bufferNadir() {bufferNadir(false);};
     inline void recordRssiChange(int delta);
-    ExtremumType nextToSendType();
+    ExtremumType nextToSendType() const;
     Extremum popNextToSend();
     inline bool checkForPeak(int rssiChange);
     inline bool checkForNadir(int rssiChange);
@@ -246,9 +246,9 @@ private:
 
     Filter<rssi_t> *filter;
 
-    inline RssiResult timerHandler(const int rssiChange);
-    inline RssiResult scannerHandler(const int rssiChange);
-    inline RssiResult rawHandler(const int rssiChange);
+    inline RssiResult timerHandler(int rssiChange);
+    inline RssiResult scannerHandler(int rssiChange);
+    inline RssiResult rawHandler(int rssiChange);
     inline ExtremumType updateHistory(int rssiChange);
     inline freq_t updateScanHistory(freq_t freq);
     inline void updateRssiHistory();
@@ -287,13 +287,13 @@ public:
 
     void setFilter(Filter<rssi_t> *f);
     void start(mtime_t ms, utime_t us);
-    bool isStateValid();
+    bool isStateValid() const;
     /**
      * Restarts rssi peak tracking for node.
      */
     void resetState(mtime_t ms);
     RssiResult process(rssi_t rssi, mtime_t ms);
-    bool isCrossing();
+    bool isCrossing() const;
     void startCrossing(uint8_t trigger);
     void endCrossing(uint8_t trigger);
 
@@ -305,7 +305,7 @@ public:
     LastTrigger& getLastExit() { return lastExit; }
 
 #ifdef USE_MQTT
-    void publishTrigger(const char* topic, LastTrigger& lastTrigger);
+    void publishTrigger(const char* topic, const LastTrigger& lastTrigger);
 #endif
 };
 #endif
