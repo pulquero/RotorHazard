@@ -1,17 +1,17 @@
 #include <sys/time.h>
 
-inline int sprints(char* dest, const char* src) {
+inline int sprints(char*const dest, const char*const src) {
   strcpy(dest, src);
   return strlen(src);
 }
 
-inline int jsonStart(char *buf) {
+inline int jsonStart(char *const buf) {
     buf[0] = '{';
     buf[1] = '\0';
     return 1;
 }
 
-inline int jsonPropertyString(char *buf, const char *key, const char *value) {
+inline int jsonPropertyString(char *const buf, const char *const key, const char *const value) {
     int n = 0;
     buf[n++] = '\"';
     n += sprints(buf+n, key);
@@ -25,7 +25,7 @@ inline int jsonPropertyString(char *buf, const char *key, const char *value) {
     return n;
 }
 
-inline int jsonPropertyUInt(char *buf, const char *key, int value) {
+inline int jsonPropertyUInt(char *buf, const char *key, const int value) {
     int n = 0;
     buf[n++] = '\"';
     n += sprints(buf+n, key);
@@ -36,7 +36,7 @@ inline int jsonPropertyUInt(char *buf, const char *key, int value) {
     return n;
 }
 
-inline int jsonPropertyNegUInt(char *buf, const char *key, int value) {
+inline int jsonPropertyNegUInt(char *const buf, const char *const key, const int value) {
     int n = 0;
     buf[n++] = '\"';
     n += sprints(buf+n, key);
@@ -47,7 +47,7 @@ inline int jsonPropertyNegUInt(char *buf, const char *key, int value) {
     return n;
 }
 
-inline int jsonPropertyULong(char *buf, const char *key, uint32_t value) {
+inline int jsonPropertyULong(char *const buf, const char *const key, const uint32_t value) {
     int n = 0;
     buf[n++] = '\"';
     n += sprints(buf+n, key);
@@ -58,7 +58,7 @@ inline int jsonPropertyULong(char *buf, const char *key, uint32_t value) {
     return n;
 }
 
-inline int jsonPropertyTime(char *buf, const char *key, const timeval *t) {
+inline int jsonPropertyTime(char *const buf, const char *const key, const timeval *const t) {
     int n = 0;
     buf[n++] = '\"';
     n += sprints(buf+n, key);
@@ -69,7 +69,7 @@ inline int jsonPropertyTime(char *buf, const char *key, const timeval *t) {
     return n;
 }
 
-inline int jsonEnd(char *buf) {
+inline int jsonEnd(char *const buf) {
     buf[0] = '}';
     buf[1] = '\0';
     return 1;

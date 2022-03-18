@@ -11,7 +11,7 @@ template <typename T, uint8_t N> class UnifiedSendBuffer : public SendBuffer<T>,
         ExtremumType lastAddedType = NONE;
         uint_fast8_t nextToSendIndex = 0;
 
-        const int_fast8_t findNextBestPeak(int_fast8_t startPeakIdx) const {
+        const int_fast8_t findNextBestPeak(const int_fast8_t startPeakIdx) const {
             int_fast8_t bestIdx = startPeakIdx;
             T bestValue = buffer[bestIdx];
             for (int_fast8_t i = bestIdx+2; i<buffer.size(); i+=2) {
@@ -24,7 +24,7 @@ template <typename T, uint8_t N> class UnifiedSendBuffer : public SendBuffer<T>,
             return bestIdx;
         }
 
-        const int_fast8_t findNextBestNadir(int_fast8_t startNadirIdx) const {
+        const int_fast8_t findNextBestNadir(const int_fast8_t startNadirIdx) const {
             int_fast8_t bestIdx = startNadirIdx;
             T bestValue = buffer[bestIdx];
             for (int_fast8_t i = bestIdx+2; i<buffer.size(); i+=2) {
@@ -60,10 +60,10 @@ public:
             return buffer.size() - nextToSendIndex;
         }
     public:
-        T operator [] (uint_fast8_t index) const {
+        T operator [] (const uint_fast8_t index) const {
             return buffer[index];
         }
-        const ExtremumType typeAt(uint_fast8_t index) const {
+        const ExtremumType typeAt(const uint_fast8_t index) const {
             if (index >= buffer.size()) {
                 return NONE;
             } else {
@@ -80,7 +80,7 @@ public:
         uint_fast8_t size() const {
             return buffer.size();
         }
-        bool addPeak(const T& peak, bool force = false) {
+        bool addPeak(const T& peak, const bool force = false) {
             if (lastAddedType != PEAK) {
                 add(peak);
                 lastAddedType = PEAK;
@@ -89,7 +89,7 @@ public:
                 return false;
             }
         }
-        bool addNadir(const T& nadir, bool force = false) {
+        bool addNadir(const T& nadir, const bool force = false) {
             if (lastAddedType != NADIR) {
                 add(nadir);
                 lastAddedType = NADIR;

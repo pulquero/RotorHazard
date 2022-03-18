@@ -10,7 +10,7 @@
 
 constexpr uint16_t MIN_TUNETIME = 35;  // after set freq need to wait this long before read RSSI
 
-inline void initExtremum(Extremum& e, rssi_t rssi, mtime_t ts)
+inline void initExtremum(Extremum& e, const rssi_t rssi, const mtime_t ts)
 {
     e.rssi = rssi;
     e.firstTime = ts;
@@ -33,7 +33,7 @@ void RssiNode::start(const mtime_t ms, const utime_t us)
     state.lastloopMicros = us;
 }
 
-bool RssiNode::isStateValid()
+bool RssiNode::isStateValid() const
 {
     return state.nodeRssiNadir <= state.rssi && state.rssi <= state.nodeRssiPeak;
 }
@@ -47,7 +47,7 @@ void RssiNode::resetState(const mtime_t ms)
     lastResetTimeMs = ms;
 }
 
-RssiResult RssiNode::process(rssi_t rssi, mtime_t ms)
+RssiResult RssiNode::process(const rssi_t rssi, const mtime_t ms)
 {
     RssiResult result;
 
@@ -214,7 +214,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
 
         // find lifetime of last value when a nadir
         if (lastIdx < 0) {
-            ConnectedComponent& cc = ccs[-lastIdx-1];
+            const ConnectedComponent& cc = ccs[-lastIdx-1];
             const uint_fast8_t lastLifetime = cc.nadirLifetime(phData);
             state.lifetime = -constrain((int)lastLifetime, 0, 127);
             if (lastLifetime > exitThreshold) {
@@ -230,7 +230,7 @@ bool RssiNode::checkForCrossing_ph(const ExtremumType currentType, const uint8_t
 
         // find lifetime of last value when a peak
         if (lastIdx < 0) {
-            ConnectedComponent& cc = ccs[-lastIdx-1];
+            const ConnectedComponent& cc = ccs[-lastIdx-1];
             const uint_fast8_t lastLifetime = cc.peakLifetime(phData);
             state.lifetime = constrain((int)lastLifetime, 0, 127);
             if (lastLifetime > enterThreshold) {
@@ -325,12 +325,12 @@ bool RssiNode::checkForCrossing_old(const rssi_t enterThreshold, const rssi_t ex
     return state.crossing;
 }
 
-bool RssiNode::isCrossing()
+bool RssiNode::isCrossing() const
 {
     return state.crossing;
 }
 
-void RssiNode::startCrossing(uint8_t trigger)
+void RssiNode::startCrossing(const uint8_t trigger)
 {
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
@@ -350,7 +350,7 @@ void RssiNode::startCrossing(uint8_t trigger)
 }
 
 /*** Function called when crossing ends (by RSSI or I2C command). */
-void RssiNode::endCrossing(uint8_t trigger)
+void RssiNode::endCrossing(const uint8_t trigger)
 {
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
@@ -395,7 +395,7 @@ void RssiNode::endCrossing(uint8_t trigger)
 }
 
 #ifdef USE_MQTT
-void RssiNode::publishTrigger(const char* topic, LastTrigger& trigger)
+void RssiNode::publishTrigger(const char*const topic, const LastTrigger& trigger)
 {
     char json[64] = "";
     int n = jsonStart(json);
@@ -417,7 +417,7 @@ void RssiNode::publishTrigger(const char* topic, LastTrigger& trigger)
 #endif
 
 RssiResult RssiNode::scannerHandler(const int rssiChange) {
-    freq_t nextFreq = updateScanHistory(settings.vtxFreq);
+    const freq_t nextFreq = updateScanHistory(settings.vtxFreq);
     settings.vtxFreq = nextFreq;
     RssiResult result;
     result.nextFreq = nextFreq;
@@ -429,7 +429,7 @@ freq_t RssiNode::updateScanHistory(const freq_t freq)
 #ifdef SCAN_HISTORY
     if (!scanHistory.isFull())
     {
-        FreqRssi f_r = {freq, state.rssi};
+        const FreqRssi f_r = {freq, state.rssi};
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
             scanHistory.push(f_r);
@@ -477,7 +477,7 @@ int State::readRssiFromFilter(Filter<rssi_t>* filter)
     rssiTimestamp = filter->getFilterTimestamp();
 
     // ensure signed arithmetic
-    int delta = (int)rssi - (int)lastRssi;
+    const int delta = (int)rssi - (int)lastRssi;
     return delta;
 }
 
@@ -495,7 +495,7 @@ void State::updateRssiStats() {
 }
 
 /*** Calculate the time it takes to run the main loop. */
-void State::updateLoopTime(utime_t loopMicros)
+void State::updateLoopTime(const utime_t loopMicros)
 {
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
     {
@@ -518,7 +518,7 @@ void State::reset()
     nodeRssiNadir = MAX_RSSI;
 }
 
-ExtremumType History::startNewPeak(rssi_t rssi, mtime_t ts) {
+ExtremumType History::startNewPeak(const rssi_t rssi, const mtime_t ts) {
   // must buffer latest peak to prevent losing it
   bufferPeak(true);
   // reset peak
@@ -527,7 +527,7 @@ ExtremumType History::startNewPeak(rssi_t rssi, mtime_t ts) {
   return extremumType;
 }
 
-ExtremumType History::startNewNadir(rssi_t rssi, mtime_t ts) {
+ExtremumType History::startNewNadir(const rssi_t rssi, const mtime_t ts) {
   // must buffer latest nadir to prevent losing it
   bufferNadir(true);
   // reset nadir
@@ -536,13 +536,13 @@ ExtremumType History::startNewNadir(rssi_t rssi, mtime_t ts) {
   return extremumType;
 }
 
-void History::bufferPeak(bool force)
+void History::bufferPeak(const bool force)
 {
     if (hasPending & PENDING_PEAK)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            bool buffered = sendBuffer->addPeak(peak, force);
+            const bool buffered = sendBuffer->addPeak(peak, force);
             if (buffered || force)
             {
                 hasPending &= ~PENDING_PEAK;
@@ -551,13 +551,13 @@ void History::bufferPeak(bool force)
     }
 }
 
-void History::bufferNadir(bool force)
+void History::bufferNadir(const bool force)
 {
     if (hasPending & PENDING_NADIR)
     {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
         {
-            bool buffered = sendBuffer->addNadir(nadir, force);
+            const bool buffered = sendBuffer->addNadir(nadir, force);
             if (buffered || force)
             {
                 hasPending &= ~PENDING_NADIR;
@@ -566,13 +566,13 @@ void History::bufferNadir(bool force)
     }
 }
 
-void History::recordRssiChange(int delta)
+void History::recordRssiChange(const int delta)
 {
   // clamp to prevent overflow
   prevRssiChange = constrain(delta, -127, 127);
 }
 
-ExtremumType History::nextToSendType()
+ExtremumType History::nextToSendType() const
 {
     ExtremumType t;
     ATOMIC_BLOCK(ATOMIC_RESTORESTATE)

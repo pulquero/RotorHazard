@@ -53,7 +53,7 @@ int_fast8_t Message::getPayloadSize() const
 }
 
 // Generic IO write command handler
-void Message::handleWriteCommand(CommSource src)
+void Message::handleWriteCommand(const CommSource src)
 {
     buffer.flipForRead();
     bool activityFlag = true;
@@ -64,7 +64,7 @@ void Message::handleWriteCommand(CommSource src)
         case WRITE_FREQUENCY:
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-                freq_t freq = buffer.read16();
+                const freq_t freq = buffer.read16();
                 if ((freq >= MIN_FREQ && freq <= MAX_FREQ) || (freq == POWER_OFF_FREQ))
                 {
                     RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
@@ -85,7 +85,7 @@ void Message::handleWriteCommand(CommSource src)
         case WRITE_MODE:
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-                uint8_t mode = buffer.read8();
+                const uint8_t mode = buffer.read8();
                 setMode((Mode)mode);
             }
             break;
@@ -93,7 +93,7 @@ void Message::handleWriteCommand(CommSource src)
         case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-                rssi_t rssiVal = ioBufferReadRssi(buffer);
+                const rssi_t rssiVal = ioBufferReadRssi(buffer);
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                 Settings& settings = rssiNode.getSettings();
                 if (rssiVal != settings.enterAtLevel)
@@ -107,7 +107,7 @@ void Message::handleWriteCommand(CommSource src)
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-                rssi_t rssiVal = ioBufferReadRssi(buffer);
+                const rssi_t rssiVal = ioBufferReadRssi(buffer);
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                 Settings& settings = rssiNode.getSettings();
                 if (rssiVal != settings.exitAtLevel)
@@ -120,7 +120,7 @@ void Message::handleWriteCommand(CommSource src)
 
         case WRITE_CURNODE_INDEX:  // index of current node for this processor
             {
-                uint8_t idx = buffer.read8();
+                const uint8_t idx = buffer.read8();
                 if (idx < rssiRxs.getCount()) {
                     cmdRssiNodeIndex = idx;
                 }
@@ -129,7 +129,7 @@ void Message::handleWriteCommand(CommSource src)
 
         case SEND_STATUS_MESSAGE:  // status message sent from server to node
             {
-                uint16_t msg = buffer.read16();  // upper byte is message type, lower byte is data
+                const uint16_t msg = buffer.read16();  // upper byte is message type, lower byte is data
                 handleStatusMessage((uint8_t)(msg >> 8), (uint8_t)(msg & 0x00FF));
             }
             break;
@@ -144,7 +144,7 @@ void Message::handleWriteCommand(CommSource src)
 
         case RESET_PAIRED_NODE:  // reset paired node for ISP
             {
-                uint8_t pinState = buffer.read8();
+                const uint8_t pinState = buffer.read8();
                 hardware.resetPairedNode(pinState);
             }
             break;
@@ -178,7 +178,7 @@ template <size_t N,size_t T> void ioBufferWriteExtremum(Buffer<N,T>& buf, const 
     buf.write16(e.duration);
 }
 
-void Message::setMode(Mode mode) const
+void Message::setMode(const Mode mode) const
 {
     RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
     Settings& settings = rssiNode.getSettings();
@@ -211,7 +211,7 @@ void Message::setMode(Mode mode) const
 }
 
 // Generic IO read command handler
-void Message::handleReadCommand(CommSource src)
+void Message::handleReadCommand(const CommSource src)
 {
     buffer.flipForWrite();
     bool activityFlag = true;
@@ -227,7 +227,7 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                Settings& settings = rssiNode.getSettings();
+                const Settings& settings = rssiNode.getSettings();
                 buffer.write16(settings.vtxFreq);
             } else {
                 buffer.write16(0xFFFF);
@@ -238,7 +238,7 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                Settings& settings = rssiNode.getSettings();
+                const Settings& settings = rssiNode.getSettings();
                 buffer.write8(settings.mode);
             } else {
                 buffer.write8(0xFF);
@@ -249,8 +249,8 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                State& state = rssiNode.getState();
-                LastPass& lastPass = rssiNode.getLastPass();
+                const State& state = rssiNode.getState();
+                const LastPass& lastPass = rssiNode.getLastPass();
                 ioBufferWriteRssi(buffer, state.rssi);
                 buffer.write8(lastPass.lap);
                 buffer.write8(rssiNode.isCrossing());
@@ -266,7 +266,7 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                State& state = rssiNode.getState();
+                const State& state = rssiNode.getState();
                 ioBufferWriteRssi(buffer, state.nodeRssiPeak);
                 ioBufferWriteRssi(buffer, state.nodeRssiNadir);
             } else {
@@ -279,8 +279,8 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                LastPass& lastPass = rssiNode.getLastPass();
-                mtime_t timeNowVal = usclock.millis();
+                const LastPass& lastPass = rssiNode.getLastPass();
+                const mtime_t timeNowVal = usclock.millis();
                 buffer.write8(lastPass.lap);
                 buffer.write16(toDuration(timeNowVal - lastPass.timestamp));  // ms since lap
                 ioBufferWriteRssi(buffer, lastPass.rssiPeak);
@@ -297,8 +297,8 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                LastTrigger& lastEnter = rssiNode.getLastEnter();
-                mtime_t timeNowVal = usclock.millis();
+                const LastTrigger& lastEnter = rssiNode.getLastEnter();
+                const mtime_t timeNowVal = usclock.millis();
                 buffer.write8(lastEnter.lap);
                 buffer.write16(toDuration(timeNowVal - lastEnter.timestamp));  // ms since enter
                 ioBufferWriteRssi(buffer, lastEnter.rssi);
@@ -315,8 +315,8 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                LastTrigger& lastExit = rssiNode.getLastExit();
-                mtime_t timeNowVal = usclock.millis();
+                const LastTrigger& lastExit = rssiNode.getLastExit();
+                const mtime_t timeNowVal = usclock.millis();
                 buffer.write8(lastExit.lap);
                 buffer.write16(toDuration(timeNowVal - lastExit.timestamp));  // ms since exit
                 ioBufferWriteRssi(buffer, lastExit.rssi);
@@ -333,14 +333,14 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                State& state = rssiNode.getState();
+                const State& state = rssiNode.getState();
                 History& history = rssiNode.getHistory();
                 buffer.write8(state.lifetime);  // NB: signed
                 buffer.write16(toDuration(state.loopTimeMicros));
-                ExtremumType extremumType = history.nextToSendType();
+                const ExtremumType extremumType = history.nextToSendType();
                 if (extremumType != NONE) {
-                    Extremum extremum = history.popNextToSend();
-                    mtime_t timeNowVal = usclock.millis();
+                    const Extremum extremum = history.popNextToSend();
+                    const mtime_t timeNowVal = usclock.millis();
                     ioBufferWriteExtremum(buffer, extremum, timeNowVal);
                 } else {
                     ioBufferWriteRssi(buffer, 0);
@@ -361,7 +361,7 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                Settings& settings = rssiNode.getSettings();
+                const Settings& settings = rssiNode.getSettings();
                 ioBufferWriteRssi(buffer, settings.enterAtLevel);
             } else {
                 ioBufferWriteRssi(buffer, MAX_RSSI);
@@ -372,7 +372,7 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                Settings& settings = rssiNode.getSettings();
+                const Settings& settings = rssiNode.getSettings();
                 ioBufferWriteRssi(buffer, settings.exitAtLevel);
             } else {
                 ioBufferWriteRssi(buffer, MAX_RSSI);
@@ -506,16 +506,16 @@ void Message::handleReadScanHistory(RssiNode& rssiNode)
     }
 }
 
-void handleStreamEvent(Stream& stream, Message& msg, CommSource src)
+void handleStreamEvent(Stream& stream, Message& msg, const CommSource src)
 {
-    uint8_t nextByte = stream.read();
+    const uint8_t nextByte = stream.read();
     if (msg.buffer.size == 0)
     {
         // new command
         msg.command = (Command) nextByte;
         if (msg.isWriteCommand())
         {  // Commands > 0x50 are writes TO this slave
-            int_fast8_t expectedSize = msg.getPayloadSize();
+            const int_fast8_t expectedSize = msg.getPayloadSize();
             if (expectedSize > 0)
             {
                 msg.buffer.index = 0;
@@ -536,7 +536,7 @@ void handleStreamEvent(Stream& stream, Message& msg, CommSource src)
     }
 }
 
-void sendReadCommandResponse(Stream& stream, Message& msg, CommSource src) {
+void sendReadCommandResponse(Stream& stream, Message& msg, const CommSource src) {
     // if there is pending data, send it
     if (msg.buffer.size > 0) {
 // don't write to serial in debug mode
@@ -550,10 +550,10 @@ void sendReadCommandResponse(Stream& stream, Message& msg, CommSource src) {
     }
 }
 
-void validateAndProcessWriteCommand(Message& msg, CommSource src) {
+void validateAndProcessWriteCommand(Message& msg, const CommSource src) {
     if (msg.buffer.index == msg.buffer.size)
     {
-        uint8_t checksum = msg.buffer.calculateChecksum(msg.buffer.size - 1);
+        const uint8_t checksum = msg.buffer.calculateChecksum(msg.buffer.size - 1);
         if (msg.buffer.data[msg.buffer.size - 1] == checksum)
         {
             msg.handleWriteCommand(src);
