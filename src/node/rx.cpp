@@ -26,20 +26,22 @@ static uint16_t freqMhzToRegVal(const freq_t freqInMhz)
     return (N << 7) + A;
 }
 
-void RxModule::init(const uint8_t dataPin, const uint8_t clkPin, const uint8_t selPin, const uint8_t rssiPin)
+void RxModule::init(SPIProtocol* spi, const uint8_t selPin, const uint8_t rssiPin)
 {
-    this->dataPin = dataPin;
-    this->clkPin = clkPin;
+    this->spi = spi;
     this->selPin = selPin;
     this->rssiPin = rssiPin;
-
-    spiInit();
+    // turn-off SPI chip select
+    // set to high without glitching by using PULLUP
+    pinMode(selPin, INPUT_PULLUP);
+    pinMode(selPin, OUTPUT);
+    digitalWrite(selPin, HIGH);
 }
 
 // Reset rx5808 module to wake up from power down
 void RxModule::reset()
 {  
-    spiWrite(STATE_REGISTER, 0x00);
+    spi->write(selPin, STATE_REGISTER, 0x00);
     powerUp();
 }
 
@@ -51,13 +53,13 @@ void RxModule::setFrequency(const freq_t frequency)
 
     //Channel data from the lookup table, 20 bytes of register data are sent, but the MSB 4 bits are zeros.
     // register address = 0x1, write, data0-15=vtxHex data15-19=0x0
-    spiWrite(SYNTHESIZER_REGISTER_B, vtxHex);
+    spi->write(selPin, SYNTHESIZER_REGISTER_B, vtxHex);
 }
 
 // Set power options on the rx5808 module
 void RxModule::setPower(const uint32_t options)
 {
-    spiWrite(POWER_DOWN_CONTROL_REGISTER, options);
+    spi->write(selPin, POWER_DOWN_CONTROL_REGISTER, options);
 }
 
 // Set up rx5808 module (disabling unused features to save some power)
@@ -94,15 +96,16 @@ rssi_t RxModule::readRssi()
 #define SPI_CLOCK_HIGH_PERIOD 5
 #define SPI_CLOCK_DATA_DELAY 2
 
-void BitBangRxModule::spiInit()
+void BitBangSPI::init(uint8_t clkPin, uint8_t dataPin)
 {
+    SPIProtocol::init(clkPin, dataPin);
     pinMode(clkPin, OUTPUT);
-    pinMode(dataPin, OUTPUT);
     digitalWrite(clkPin, LOW);
+    pinMode(dataPin, OUTPUT);
     digitalWrite(dataPin, LOW);
 }
 
-void BitBangRxModule::spiWrite(const uint8_t addr, const uint32_t data)
+void BitBangSPI::write(const uint8_t selPin, const uint8_t addr, const uint32_t data)
 {
     delayMicroseconds(SPI_CHILL_TIME); // Delay between writes
     digitalWrite(selPin, LOW); // Enable chip select
@@ -113,7 +116,7 @@ void BitBangRxModule::spiWrite(const uint8_t addr, const uint32_t data)
     digitalWrite(dataPin, LOW);
 }
 
-template <typename T> const void BitBangRxModule::bitBang(T bits, const uint_fast8_t size)
+template <typename T> const void BitBangSPI::bitBang(T bits, const uint_fast8_t size)
 {
     for (uint_fast8_t i = size; i > 0; i--)
     {
@@ -122,7 +125,7 @@ template <typename T> const void BitBangRxModule::bitBang(T bits, const uint_fas
     }
 }
 
-inline const void BitBangRxModule::serialSendBit(const bool b)
+inline const void BitBangSPI::serialSendBit(const bool b)
 {
     digitalWrite(dataPin, b ? HIGH : LOW);
     delayMicroseconds(SPI_DATA_CLOCK_DELAY);
@@ -141,12 +144,13 @@ inline const void BitBangRxModule::serialSendBit(const bool b)
 #if TARGET == ESP32_TARGET
 #include <SPI.h>
 
-void NativeRxModule::spiInit()
+void NativeSPI::init(uint8_t clkPin, uint8_t dataPin)
 {
+    SPIProtocol::init(clkPin, dataPin);
     SPI.begin(clkPin, -1, dataPin);
 }
 
-void NativeRxModule::spiWrite(const uint8_t addr, const uint32_t data)
+void NativeSPI::write(const uint8_t selPin, const uint8_t addr, const uint32_t data)
 {
     uint32_t payload = addr | (1 << 4) | (data << 5);
     // SPI clock speed should be 100KHz

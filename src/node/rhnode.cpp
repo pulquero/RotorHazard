@@ -36,16 +36,22 @@
 // Initialize program
 void setup()
 {
+    // init all VRX modules
+    for (int i=0; i<rssiRxs.getCount(); i++) {
+        RxModule& rx = rssiRxs.getRxModule(i);
+        hardware.initRxModule(i, rx);
+    }
+
+    // init SPI and other hardware
     hardware.init();
 
 #ifdef USE_WIFI
     wifiInit();
 #endif
 
-    // if EEPROM-check value matches then read stored values
+    // setup VRXs
     for (int i=0; i<rssiRxs.getCount(); i++) {
         RxModule& rx = rssiRxs.getRxModule(i);
-        hardware.initRxModule(i, rx);
         rx.reset();
 
         Settings& settings = rssiRxs.getSettings(i);
@@ -60,6 +66,7 @@ void setup()
         }
     }
 
+    // start
     rssiRxs.start(usclock.millis(), usclock);
 }
 

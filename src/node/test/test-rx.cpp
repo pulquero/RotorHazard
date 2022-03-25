@@ -4,14 +4,18 @@
 
 unittest(bitbang_powerUp)
 {
-    BitBangRxModule rx;
+    BitBangSPI spi;
+    RxModule rx;
+    rx.init(&spi, 0, 0);
     rx.powerUp();
     assertFalse(rx.isPoweredDown());
 }
 
 unittest(bitbang_powerDown)
 {
-    BitBangRxModule rx;
+    BitBangSPI spi;
+    RxModule rx;
+    rx.init(&spi, 0, 0);
     rx.powerDown();
     assertTrue(rx.isPoweredDown());
 }

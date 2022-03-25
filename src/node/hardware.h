@@ -16,9 +16,16 @@ private:
     const uint8_t ledOnValue, ledOffValue;
 
 protected:
+    SPI_IMPL spi;
 #ifdef LED_BUILTIN
     bool currentStatusLedFlag = false;
 #endif
+    void initSerial(HardwareSerial& ser, unsigned long baudRate) {
+        ser.begin(baudRate);  // Start serial interface
+        while (!ser) {
+            delay(1);  // Wait for the Serial port to initialize
+        }
+    }
 
 public:
     Hardware(uint8_t ledOn, uint8_t ledOff) : ledOnValue(ledOn), ledOffValue(ledOff) {

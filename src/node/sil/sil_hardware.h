@@ -8,6 +8,11 @@ public:
     void init()
     {
         Hardware::init();
+        uint8_t dataPin = MOSI;
+        uint8_t clkPin = SCK;
+        printf("Initializing SPI with pins: data=%u, clock=%u\n", dataPin, clkPin);
+        spi.init(clkPin, dataPin);
+
 #ifdef _WIN32
         HANDLE hStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
         DWORD consoleMode;
@@ -19,12 +24,10 @@ public:
     }
     void initRxModule(uint_fast8_t nIdx, RxModule& rx)
     {
-        uint8_t dataPin = MOSI;
-        uint8_t clkPin = SCK;
         uint8_t selPin = 41 + nIdx;
         uint8_t rssiPin = 61 + nIdx;
-        printf("Initializing RX module %d with SPI pins: data=%u, clock=%u, chip-select=%u\n", nIdx, dataPin, clkPin, selPin);
-        rx.init(dataPin, clkPin, selPin, rssiPin);
+        printf("Initializing RX module %d with pins: chip-select=%u\n", nIdx, selPin);
+        rx.init(&spi, selPin, rssiPin);
     }
     void initSettings(uint_fast8_t nIdx, Settings& settings)
     {

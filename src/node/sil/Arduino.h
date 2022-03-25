@@ -27,6 +27,7 @@
 
 #define INPUT 0
 #define OUTPUT 1
+#define INPUT_PULLUP 2
 
 // pin definitions
 #define LED_BUILTIN 1
@@ -88,9 +89,19 @@ public:
         return _BufferedStream::read();
     }
     size_t write(const uint8_t* buf, size_t size);
+    operator bool() { return true; }
+    void begin(unsigned long baudRate) {}
     void end() { _close(); }
     int _performIo();
     void _close();
+};
+#else
+// stub
+class HardwareSerial {
+public:
+    operator bool() { return true; }
+    void begin(unsigned long baudRate) {}
+    void end() {}
 };
 #endif
 
