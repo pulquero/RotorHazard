@@ -6,6 +6,8 @@
 
 #define SERIAL_BAUD_RATE 115200
 
+#define SERIALCOM Serial
+
 #define COMMS_MONITOR_TIME_MS 5000 //I2C communications monitor grace/trigger time
 
 #define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
@@ -94,10 +96,9 @@ public:
     void init()
     {
         Hardware::init();
-
-        // turn-off all SPI chip selects
-        pinMode(RX5808_SEL_PIN, OUTPUT);
-        digitalWrite(RX5808_SEL_PIN, HIGH);
+        uint16_t clkPin = RX5808_CLK_PIN;    //SEL (CH2) output line to RX5808 module
+        uint16_t dataPin = RX5808_DATA_PIN;  //DATA (CH1) output line to RX5808 module
+        spi.init(clkPin, dataPin);
 
         // init pin used to reset paired Arduino via RESET_PAIRED_NODE command
         pinMode(NODE_RESET_PIN, INPUT_PULLUP);
@@ -117,10 +118,7 @@ public:
         if (digitalRead(ENABLE_SERIAL_PIN) == HIGH)
 #endif
         {
-            Serial.begin(SERIAL_BAUD_RATE);  // Start serial interface
-            while (!Serial) {
-                delay(1);  // Wait for the Serial port to initialize
-            }
+            initSerial(SERIALCOM, SERIAL_BAUD_RATE);
         }
 
 #ifdef USE_I2C
@@ -136,6 +134,7 @@ public:
     void initSettings(uint_fast8_t nIdx, Settings& settings)
     {
         int offset = nIdx*EEPROM_SETTINGS_SIZE;
+        // if EEPROM-check value matches then read stored values
         if (eepromReadWord(offset + EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
         {
             settings.vtxFreq = eepromReadWord(offset + EEPROM_ADRW_RXFREQ);
@@ -153,11 +152,9 @@ public:
 
     void initRxModule(uint_fast8_t nIdx, RxModule& rx)
     {
-        uint16_t dataPin = RX5808_DATA_PIN;  //DATA (CH1) output line to RX5808 module
-        uint16_t clkPin = RX5808_CLK_PIN;    //SEL (CH2) output line to RX5808 module
         uint16_t selPin = RX5808_SEL_PIN;    //CLK (CH3) output line to RX5808 module
         uint16_t rssiPin = RSSI_INPUT_PIN;   //RSSI input from RX5808
-        rx.init(dataPin, clkPin, selPin, rssiPin);
+        rx.init(&spi, selPin, rssiPin);
     }
 
 #ifdef USE_I2C

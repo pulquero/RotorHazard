@@ -1,5 +1,6 @@
 #include <ArduinoUnitTests.h>
 #include <Godmode.h>
+#include "../hardware.h"
 #include "../rssirx.h"
 
 #define assertRssiRx(rssirx, numRxs) \
@@ -18,6 +19,7 @@
 unittest(single_rx)
 {
     SingleRssiReceiver<RX_IMPL> rssirx;
+    hardware.initRxModule(0, rssirx.getRxModule(0));
     assertRssiRx(rssirx, 1);
 }
 
@@ -30,6 +32,8 @@ unittest(physical_rx_0)
 unittest(physical_rx_2)
 {
     PhysicalRssiReceivers<RX_IMPL,2> rssirx;
+    hardware.initRxModule(0, rssirx.getRxModule(0));
+    hardware.initRxModule(1, rssirx.getRxModule(1));
     assertRssiRx(rssirx, 2);
 }
 
@@ -42,6 +46,7 @@ unittest(virtual_rx_0)
 unittest(virtual_rx_2)
 {
     VirtualRssiReceivers<RX_IMPL,2> rssirx;
+    hardware.initRxModule(0, rssirx.getRxModule(0));
     assertRssiRx(rssirx, 2);
 }
 

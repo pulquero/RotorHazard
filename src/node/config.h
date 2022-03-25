@@ -93,10 +93,12 @@
 #define USE_PH
 
 #if TARGET == ESP32_TARGET
-#define RX_IMPL NativeRxModule
+#define SPI_IMPL NativeSPI
 #else
-#define RX_IMPL BitBangRxModule
+#define SPI_IMPL BitBangSPI
 #endif
+
+#define RX_IMPL RxModule
 
 #if TARGET != AVR_TARGET || MULTI_RHNODE_MAX == 1
 #define SCAN_HISTORY
