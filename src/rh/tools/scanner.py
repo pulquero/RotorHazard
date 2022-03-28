@@ -52,7 +52,7 @@ def scan(port, socket):
     return INTERFACE
 
 def start(com_port, web_port = 5080):
-    APP = Flask(__name__, template_folder='../server/templates', static_folder='../server/static',static_url_path='/static')
+    APP = Flask(__name__, template_folder='../templates', static_folder='../static',static_url_path='/static')
     SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins='*')
     INTERFACE = scan(com_port, SOCKET_IO)
     
