@@ -418,9 +418,11 @@ void RssiNode::publishTrigger(const char*const topic, const LastTrigger& trigger
 
 RssiResult RssiNode::scannerHandler(const int rssiChange) {
     const freq_t nextFreq = updateScanHistory(settings.vtxFreq);
-    settings.vtxFreq = nextFreq;
     RssiResult result;
-    result.nextFreq = nextFreq;
+    if (nextFreq > 0) {
+        settings.vtxFreq = nextFreq;
+        result.nextFreq = nextFreq;
+    }
     return result;
 }
 

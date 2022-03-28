@@ -1,6 +1,6 @@
 #include "rssirx.h"
 
-#if TARGET == STM32_TARGET || TARGET == ESP32_TARGET
+#if TARGET == STM32_TARGET || TARGET == ESP32_TARGET || TARGET == SIL_TARGET
     PhysicalRssiReceivers<RX_IMPL,MULTI_RHNODE_MAX> defaultRssiReceivers;
 #else
     #if MULTI_RHNODE_MAX == 1
