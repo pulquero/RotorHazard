@@ -53,6 +53,7 @@ public:
     RxModule& operator=(RxModule&&) = delete;
 
     void init(SPIProtocol* spi, uint8_t selPin, uint8_t rssiPin);
+    uint8_t chipSelectPin() { return selPin; }
     void setFrequency(freq_t frequency);
     void setPower(uint32_t options);
     rssi_t readRssi();
