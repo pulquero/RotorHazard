@@ -5,10 +5,12 @@
 
 #define assertRssiRx(rssirx, numRxs) \
 { \
+    GodmodeState* nano = GODMODE(); \
     assertEqual(numRxs, rssirx.getCount()); \
     for (int i=0; i<rssirx.getCount(); i++) { \
         rssirx.getRssiNode(i); \
-        rssirx.getRxModule(i); \
+        RxModule& rx = rssirx.getRxModule(i); \
+        assertEqual(HIGH, nano->digitalPin[rx.chipSelectPin()]); \
         rssirx.getSettings(i); \
         assertEqual(i, rssirx.getSlotIndex(i)); \
     } \
