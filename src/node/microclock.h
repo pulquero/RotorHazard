@@ -16,6 +16,7 @@ private:
 public:
     utime_t tickMicros();
     mtime_t millis();
+    void delay(mtime_t ms);
 };
 
 extern MicroClock usclock;
