@@ -12,7 +12,7 @@ constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_SIZE = SCAN_HISTORY_PAYLOAD_COUNT*si
 uint8_t volatile cmdStatusFlags = NO_STATUS;
 uint_fast8_t volatile cmdRssiNodeIndex = 0;
 
-inline void setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
+inline bool setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
     if (freq == POWER_OFF_FREQ) {
         rx.powerDown();
         rssiNode.active = false;
@@ -21,8 +21,14 @@ inline void setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
             rx.reset();  // reset and power-up
         }
         rx.setFrequency(freq);
+        freq_t newFreq = rx.getFrequency();
+        if (newFreq != canonicalFrequency(freq)) {
+            LOG_ERROR("Failed to set vrx frequency, currently is ", newFreq, DEC);
+            return false;
+        }
         rssiNode.active = true;
     }
+    return true;
 }
 
 int_fast8_t Message::getPayloadSize() const
@@ -69,15 +75,17 @@ void Message::handleWriteCommand(const CommSource src)
                 {
                     RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                     Settings& settings = rssiNode.getSettings();
-                    if (freq != settings.vtxFreq)
-                    {
-                        settings.vtxFreq = freq;
-                        hardware.storeFrequency(freq);
-                        rssiNode.resetState(usclock.millis());  // restart rssi peak tracking for node
-                    }
-
                     RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
-                    setFrequency(rssiNode, rx, freq);
+                    if (setFrequency(rssiNode, rx, freq))
+                    {
+                        if (freq != settings.vtxFreq) {
+                            settings.vtxFreq = freq;
+                            hardware.storeFrequency(freq);
+                        }
+                    } else {
+                        settings.vtxFreq = ERR_FREQ;
+                    }
+                    rssiNode.resetState(usclock.millis());  // restart rssi peak tracking for node
                 }
             }
             break;

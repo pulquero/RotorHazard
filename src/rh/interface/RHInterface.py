@@ -77,6 +77,8 @@ RHFEAT_JUMPTO_BOOTLDR = 0x0008  # JUMP_TO_BOOTLOADER command supported
 RHFEAT_IAP_FIRMWARE = 0x0010    # in-application programming of firmware supported
 RHFEAT_PH = 0x0100
 
+MIN_FREQ = 5645
+MAX_FREQ = 5945
 MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
 
 logger = logging.getLogger(__name__)
@@ -594,7 +596,18 @@ class RHInterface(BaseHardwareInterface):
         return node.set_and_validate_value_16(
             WRITE_FREQUENCY,
             READ_FREQUENCY,
-            frequency)
+            frequency, not_set_handler=self.frequency_not_set_handler)
+
+    def frequency_not_set_handler(self, in_freq, out_freq):
+        if out_freq == 0xFFFF:
+            if in_freq < MIN_FREQ:
+                return "Unsupported frequency: minimum is {}".format(MIN_FREQ)
+            elif in_freq > MAX_FREQ:
+                return "Unsupported frequency: maximum is {}".format(MAX_FREQ)
+            else:
+                return "Failed to set VRX register using SPI"
+        else:
+            return ""
 
     def transmit_enter_at_level(self, node, level):
         return self.set_and_validate_value_rssi(node,

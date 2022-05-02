@@ -410,6 +410,7 @@ class BaseHardwareInterface:
             node.summary_stats()
 
     def set_frequency(self, node_index, frequency, band=None, channel=None):
+        logger.debug("set_frequency: node {} frequency {} band {} channel {}".format(node_index, frequency, band, channel))
         node = self.nodes[node_index]
         old_frequency = node.frequency
         old_bandChannel = node.bandChannel

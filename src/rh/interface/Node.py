@@ -118,7 +118,7 @@ class CommandsWithRetry:
     def set_value_32(self, command, val):
         self.write_command(command, pack_32(val))
 
-    def set_and_validate_value(self, write_func, write_command, read_func, read_command, in_value, size, max_retries=MAX_RETRY_COUNT):
+    def set_and_validate_value(self, write_func, write_command, read_func, read_command, in_value, size, max_retries=MAX_RETRY_COUNT, not_set_handler=None):
         success = False
         retry_count = 0
         out_value = None
@@ -129,18 +129,20 @@ class CommandsWithRetry:
                 success = True
             else:
                 retry_count += 1
-                logger.info('Value not set (retry={0}): cmd={1:#04x}, set={2}, get={3}, node={4}'.\
-                         format(retry_count, write_command, in_value, out_value, self))
-        return out_value if out_value is not None else in_value
+                detailed_err_msg = not_set_handler(in_value, out_value) if not_set_handler else None
+                logger.info('Value not set (retry={0}): cmd={1:#04x}, set={2}, get={3}, node={4}{5}'.
+                         format(retry_count, write_command, in_value, out_value, self,
+                                " ({})".format(detailed_err_msg) if detailed_err_msg else ""))
+        return out_value if success else in_value
 
-    def set_and_validate_value_8(self, write_command, read_command, val):
-        return self.set_and_validate_value(self.set_value_8, write_command, self.get_value_8, read_command, val, 1)
+    def set_and_validate_value_8(self, write_command, read_command, val, **kwargs):
+        return self.set_and_validate_value(self.set_value_8, write_command, self.get_value_8, read_command, val, 1, **kwargs)
 
-    def set_and_validate_value_16(self, write_command, read_command, val):
-        return self.set_and_validate_value(self.set_value_16, write_command, self.get_value_16, read_command, val, 2)
+    def set_and_validate_value_16(self, write_command, read_command, val, **kwargs):
+        return self.set_and_validate_value(self.set_value_16, write_command, self.get_value_16, read_command, val, 2, **kwargs)
 
-    def set_and_validate_value_32(self, write_command, read_command, val):
-        return self.set_and_validate_value(self.set_value_32, write_command, self.get_value_32, read_command, val, 4)
+    def set_and_validate_value_32(self, write_command, read_command, val, **kwargs):
+        return self.set_and_validate_value(self.set_value_32, write_command, self.get_value_32, read_command, val, 4, **kwargs)
 
 
 class NodeManager(CommandsWithRetry):
@@ -174,9 +176,9 @@ class NodeManager(CommandsWithRetry):
         with self:  # only allow one greenlet at a time
             return super().write_command(command, data, max_retries, log_level)
 
-    def set_and_validate_value(self, write_func, write_command, read_func, read_command, val, size, max_retries=MAX_RETRY_COUNT):
+    def set_and_validate_value(self, write_func, write_command, read_func, read_command, val, size, **kwargs):
         with self:  # only allow one greenlet at a time
-            return super().set_and_validate_value(write_func, write_command, read_func, read_command, val, size, max_retries)
+            return super().set_and_validate_value(write_func, write_command, read_func, read_command, val, size, **kwargs)
 
     def select(self, node):
         return True
@@ -292,10 +294,10 @@ class Node(CommandsWithRetry):
             if self.manager.select(self):
                 return super().write_command(command, data, max_retries, log_level)
 
-    def set_and_validate_value(self, write_func, write_command, read_func, read_command, val, size, max_retries=MAX_RETRY_COUNT):
+    def set_and_validate_value(self, write_func, write_command, read_func, read_command, val, size, **kwargs):
         with self.manager:  # only allow one greenlet at a time
             if self.manager.select(self):
-                return super().set_and_validate_value(write_func, write_command, read_func, read_command, val, size, max_retries)
+                return super().set_and_validate_value(write_func, write_command, read_func, read_command, val, size, **kwargs)
 
     def summary_stats(self):
         pass

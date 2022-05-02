@@ -23,7 +23,7 @@ public:
     {
         uint8_t selPin = 41 + nIdx;
         uint8_t rssiPin = 61 + nIdx;
-        printf("Initializing RX module %d with pins: chip-select=%u\n", nIdx, selPin);
+        printf("Initializing RX module %d with pins: chip-select=%u, rssi=%u\n", nIdx, selPin, rssiPin);
         rx.init(&spi, selPin, rssiPin);
         isRxInit[nIdx] = true;
     }

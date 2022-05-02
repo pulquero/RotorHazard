@@ -8,7 +8,7 @@
 #include "json.h"
 #endif
 
-constexpr uint16_t MIN_TUNETIME = 35;  // after set freq need to wait this long before read RSSI
+constexpr uint16_t MIN_TUNETIME = 35;  // after set freq need to wait this long before reading RSSI
 
 inline void initExtremum(Extremum& e, const rssi_t rssi, const mtime_t ts)
 {

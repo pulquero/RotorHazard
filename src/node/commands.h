@@ -19,6 +19,7 @@ constexpr freq_t POWER_OFF_FREQ = 0;  // frequency value to power down rx module
 #endif
 constexpr freq_t MIN_FREQ = 5645;
 constexpr freq_t MAX_FREQ = 5945;
+constexpr freq_t ERR_FREQ = 0xFFFF;
 
 enum CommSource
 {

@@ -63,6 +63,7 @@ void setup()
         else if (settings.vtxFreq > 0)
         {
             rx.setFrequency(settings.vtxFreq);
+            settings.vtxFreq = rx.getFrequency();
         }
     }
 

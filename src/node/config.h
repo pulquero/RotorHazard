@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include "util/rhtypes.h"
 
-#define FIRMWARE_VERSION "B1.7"
+#define FIRMWARE_VERSION "B1.8"
 #define AVR_TARGET 1
 #define STM32_TARGET 2
 #define ESP32_TARGET 3
@@ -94,8 +94,14 @@
 
 #if TARGET == ESP32_TARGET
 #define SPI_IMPL NativeSPI
+#elif TARGET == TEST_TARGET
+#define USE_SPI_3WIRE_READ
+#define SPI_IMPL TestSPI
 #else
 #define SPI_IMPL BitBangSPI
+#if TARGET != SIL_TARGET
+#define USE_SPI_3WIRE_READ
+#endif
 #endif
 
 #define RX_IMPL RxModule

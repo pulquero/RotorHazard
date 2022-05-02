@@ -59,13 +59,6 @@ jobs:
         mypy --cobertura-xml mypy-report --install-types --non-interactive -p rh
         cd ..
 
-    - name: Python tests
-      run: |
-        cd src
-        coverage run --branch -m unittest discover -v
-        coverage xml -o test-reports/coverage.xml
-        cd ..
-
     - name: Install Arduino CI
       uses: ruby/setup-ruby@v1
       with:
@@ -84,6 +77,13 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: '16'
+
+    - name: Python tests
+      run: |
+        cd src
+        coverage run --branch -m unittest discover -v
+        coverage xml -o test-reports/coverage.xml
+        cd ..
 
     - name: Build UI
       run: |

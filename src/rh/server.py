@@ -1015,7 +1015,7 @@ def on_set_frequency(data):
         modified = True
 
     if modified:
-        logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(node_index+1, band, channel, frequency))
+        logger.info('Frequency set: Profile {} Node {} B:{} Ch:{} Freq:{}'.format(profile.id, node_index+1, band, channel, frequency))
 
         RHDATA.alter_profile({
             'profile_id': profile.id,
