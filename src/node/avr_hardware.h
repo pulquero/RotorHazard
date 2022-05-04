@@ -126,6 +126,9 @@ public:
 #endif
 
         // set ADC prescaler to 16 to speedup ADC readings
+        // sampling rate is [ADC clock = 16] / [prescaler = 16] / [conversion clock cycles = 13]
+        // ~ 76.8 kHz
+        // see https://forum.arduino.cc/t/faster-analog-read/6604
         sbi(ADCSRA, ADPS2);
         cbi(ADCSRA, ADPS1);
         cbi(ADCSRA, ADPS0);
