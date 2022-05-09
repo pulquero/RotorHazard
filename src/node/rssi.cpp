@@ -515,6 +515,7 @@ void State::resetPass()
 
 void State::reset()
 {
+    rssi = INVALID_RSSI;
     resetPass();
     nodeRssiPeak = 0;
     nodeRssiNadir = MAX_RSSI;

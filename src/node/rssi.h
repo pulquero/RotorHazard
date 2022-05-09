@@ -109,7 +109,7 @@ public:
     utime_t volatile loopTimeMicros = 0;
     utime_t lastloopMicros = 0;
 
-    rssi_t volatile rssi = 0;  // Smoothed rssi value
+    rssi_t volatile rssi = INVALID_RSSI;  // Smoothed rssi value
     mtime_t rssiTimestamp = 0;  // timestamp of the smoothed value
     rssi_t lastRssi = 0;
     int8_t volatile lifetime = 0;  // ph lifetime
@@ -194,15 +194,15 @@ public:
 
 struct LastPass
 {
-    rssi_t volatile rssiPeak = 0;
+    rssi_t volatile rssiPeak = INVALID_RSSI;
     mtime_t volatile timestamp = 0;
-    rssi_t volatile rssiNadir = MAX_RSSI;
+    rssi_t volatile rssiNadir = INVALID_RSSI;
     uint8_t volatile lap = 0;
 };
 
 struct LastTrigger
 {
-    rssi_t volatile rssi = 0;
+    rssi_t volatile rssi = INVALID_RSSI;
     mtime_t volatile timestamp = 0;
     uint8_t volatile lap = 0;
     uint8_t volatile lifetime = 0;

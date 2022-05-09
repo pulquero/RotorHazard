@@ -53,7 +53,8 @@ struct FreqRssi
     rssi_t volatile rssi;
 };
 
-constexpr rssi_t MAX_RSSI = 0xFF;
+constexpr rssi_t MAX_RSSI = 0xFE;
+constexpr rssi_t INVALID_RSSI = 0xFF;
 bool isPeakValid(const Extremum& x);
 bool isNadirValid(const Extremum& x);
 void invalidatePeak(Extremum& x);

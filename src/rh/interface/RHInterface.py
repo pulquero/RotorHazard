@@ -294,13 +294,9 @@ class RHNode(Node):
         is_crossing = None
         if has_data(data):
             sent_timestamp_ms, _ = self.get_sent_time_ms()
-            node_rssi = unpack_rssi(self, data)
-            if not self.is_valid_rssi(node_rssi):
-                self.bad_rssi_count += 1
-                # log the first ten, but then only 1 per 100 after that
-                if self.bad_rssi_count <= 10 or self.bad_rssi_count % 100 == 0:
-                    logger.warning("RSSI reading ({}) out of range on node {}; rejected; count={}".\
-                             format(node_rssi, self, self.bad_rssi_count))
+            rssi_val = unpack_rssi(self, data)
+            if self.is_valid_rssi(rssi_val):
+                node_rssi = rssi_val
             lap_count = unpack_8(data[1:])
             is_crossing = (unpack_8(data[2:]) == 1)
 
@@ -404,8 +400,6 @@ class RHNode(Node):
                 ms_since_first_time = unpack_time_since(self, READ_ANALYTICS, data[4:])  # ms *since* the first time
                 extremum_timestamp_ms = sent_timestamp_ms - ms_since_first_time
                 extremum_duration_ms = unpack_16(data[6:])
-            elif rssi_val != 0:
-                logger.warning("History RSSI reading ({}) out of range on node {}; rejected".format(rssi_val, self))
 
             if self.data_logger is not None:
                 self.data_logger.data_buffer.append((
@@ -671,7 +665,7 @@ class RHInterface(BaseHardwareInterface):
             for i in range(0, len(data), 3):
                 freq = unpack_16(data[i:])
                 rssi = unpack_8(data[i+2:])
-                if freq > 0:
+                if freq > 0 and node.is_valid_rssi(rssi):
                     freqs.append(freq)
                     rssis.append(rssi)
         return freqs, rssis

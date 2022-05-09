@@ -47,12 +47,13 @@ def start(port, freq, write_buffer):
                 data = INTERFACE.read_rssi_history(node.index)
                 if data is not None and len(data) > 0:
                     for rssi in data:
-                        if rssi == 0xFF:
-                            filename = "rssi_dump_{}.csv".format(count)
-                            write_buffer(filename, dataBuffer)
-                            dataBuffer = []
-                            count += 1
-                        elif rssi > 0:
+                        if rssi == 0xFF:  # end of data or no data
+                            if len(dataBuffer) > 0:
+                                filename = "rssi_dump_{}.csv".format(count)
+                                write_buffer(filename, dataBuffer)
+                                dataBuffer = []
+                                count += 1
+                        else:
                             dataBuffer.append(rssi)
     except:
         filename = 'rssi_dump.csv'
