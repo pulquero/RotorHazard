@@ -222,7 +222,6 @@ class Node(CommandsWithRetry):
         self.current_pilot_id = 0
         self.first_cross_flag = False
         self.show_crossing_flag = False
-        self.debug_pass_count = 0
 
         self.enter_at_level = 0
         self.exit_at_level = 0

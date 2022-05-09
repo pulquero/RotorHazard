@@ -3211,7 +3211,7 @@ def emit_node_data(**params):
             'node_nadir_rssi': [node.node_nadir_rssi if node.node_peak_rssi >= node.node_nadir_rssi else '' for node in INTERFACE.nodes],
             'pass_peak_rssi': [node.pass_peak_rssi if node.pass_peak_rssi >= node.pass_nadir_rssi else '' for node in INTERFACE.nodes],
             'pass_nadir_rssi': [node.pass_nadir_rssi if node.pass_peak_rssi >= node.pass_nadir_rssi else '' for node in INTERFACE.nodes],
-            'debug_pass_count': [node.debug_pass_count for node in INTERFACE.nodes]
+            'pass_count': [node.pass_count for node in INTERFACE.nodes]
         }
     if ('nobroadcast' in params):
         emit('node_data', emit_payload)
@@ -4404,7 +4404,6 @@ def pass_record_callback(node, lap_race_time_ms: int, source):
         logger.debug('Raw pass record: node: {0}, lap timestamp: {1} (enter: {3}, exit: {4}, duration: {5}), source: {2}' \
                      .format(node.index+1, lap_race_time_ms, source, enter_fmtstr, exit_fmtstr, duration_fmtstr))
     node.pass_crossing_flag = False  # clear the "synchronized" version of the crossing flag
-    node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
     location_id, seat = get_local_location_id_and_seat(node)
