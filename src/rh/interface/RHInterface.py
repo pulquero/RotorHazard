@@ -37,9 +37,9 @@ READ_SCAN_HISTORY = 0x26
 READ_ENTER_AT_LEVEL = 0x31
 READ_EXIT_AT_LEVEL = 0x32
 READ_TIME_MILLIS = 0x33      # read current 'millis()' time value
+READ_ADC = 0x34
 READ_MULTINODE_COUNT = 0x39  # read # of nodes handled by processor
 READ_CURNODE_INDEX = 0x3A    # read index of current node for processor
-READ_NODE_SLOTIDX = 0x3C     # read node slot index (for multi-node setup)
 READ_FW_VERSION = 0x3D       # read firmware version string
 READ_FW_BUILDDATE = 0x3E     # read firmware build date string
 READ_FW_BUILDTIME = 0x3F     # read firmware build time string
@@ -79,7 +79,7 @@ RHFEAT_PH = 0x0100
 
 MIN_FREQ = 5645
 MAX_FREQ = 5945
-MIN_RSSI_VALUE = 1               # reject RSSI readings below this value
+MIN_ADC_VALUE = 5              # reject nodes with ADC readings below this value
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,6 @@ class RHNodeManager(NodeManager):
 
     def _create_node(self, index, multi_node_index):
         node = RHNode(index, multi_node_index, self)
-        node.read_slot_index()
         return node
 
     def _select_one(self, node):
@@ -125,7 +124,7 @@ class RHNodeManager(NodeManager):
         if self.curr_multi_node_index != node.multi_node_index:
             curr_select = self.select
             self.select = self._select_one
-            self.curr_multi_node_index = node.set_and_validate_value_8(WRITE_CURNODE_INDEX, READ_CURNODE_INDEX, node.multi_node_index)
+            self.curr_multi_node_index = node.set_and_validate_value_8(WRITE_CURNODE_INDEX, READ_CURNODE_INDEX, node.multi_node_slot_index)
             self.select = curr_select
         return self.curr_multi_node_index == node.multi_node_index
 
@@ -236,18 +235,24 @@ class RHNodeManager(NodeManager):
                     info_strs.append("fw type={}".format(self.firmware_proctype_str))
             if self.read_firmware_timestamp():
                 info_strs.append("fw timestamp: {}".format(self.firmware_timestamp_str))
-    
-            if multi_count == 0:
-                logger.info("Device (with zero modules) found at {}: {}".format(self.addr, ', '.join(info_strs)))
-            elif multi_count == 1:
+
+            if multi_count == 1:
                 logger.info("Node found at {}: {}".format(self.addr, ', '.join(info_strs)))
-                self.add_node(next_index)
             else:
                 logger.info("Multi-node (with {} modules) found at {}: {}".format(multi_count, self.addr, ', '.join(info_strs)))
-                for _ in range(multi_count):
-                    node = self.add_node(next_index)
-                    logger.info("Node {} (slot={}) added at {}".format(next_index+1, node.multi_node_slot_index+1, node.addr))
+
+            for slot in range(multi_count):
+                node = self.add_node(next_index)
+                node.multi_node_slot_index = slot
+                adc_data = node.read_command(READ_ADC, 2)
+                adc_val = unpack_16(adc_data)
+                if adc_val != 0xFFFF and adc_val > MIN_ADC_VALUE:
+                    logger.info("Node {} (slot {}) added at {}".format(next_index+1, node.multi_node_slot_index+1, node.addr))
                     next_index += 1
+                else:
+                    logger.info("Ignoring non-operational node (slot {} at {} reported an ADC value of {})".format(node.multi_node_slot_index+1, node.addr, adc_val))
+                    self.remove_node(node)
+
             return True
         elif self.api_level > 0:
             logger.error('Unsupported API level {} - please upgrade'.format(self.api_level))
@@ -272,14 +277,6 @@ class RHNode(Node):
     def reset(self):
         super().reset()
         self._loop_time_stats.clear()
-
-    def read_slot_index(self):
-        # read node slot index (physical slot position of node on S32_BPill PCB)
-        try:
-            self.multi_node_slot_index = self.get_value_8(READ_NODE_SLOTIDX)
-        except Exception:
-            logger.exception('Error fetching READ_NODE_SLOTIDX from node {}'.format(self))
-        return self.multi_node_slot_index
 
     def get_sent_time_ms(self):
         server_roundtrip_ms = self.io_response_ms - self.io_request_ms

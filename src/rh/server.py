@@ -2,8 +2,8 @@
 
 RELEASE_VERSION = "3.1.2-dev.1"  # Public release version code
 SERVER_API = 32+8  # Server API version
-NODE_API_SUPPORTED = 36  # Minimum supported node version
-NODE_API_BEST = 36  # Most recent node API
+NODE_API_SUPPORTED = 37  # Minimum supported node version
+NODE_API_BEST = 37  # Most recent node API
 JSON_API = 3  # JSON API version
 
 # This must be the first import for the time being. It is
