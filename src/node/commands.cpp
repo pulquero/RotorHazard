@@ -264,7 +264,7 @@ void Message::handleReadCommand(const CommSource src)
                 buffer.write8(rssiNode.isCrossing());
                 statusFlags |= POLLING;
             } else {
-                ioBufferWriteRssi(buffer, 0);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
                 buffer.write8(0);
                 buffer.write8(0xFF);
             }
@@ -278,8 +278,8 @@ void Message::handleReadCommand(const CommSource src)
                 ioBufferWriteRssi(buffer, state.nodeRssiPeak);
                 ioBufferWriteRssi(buffer, state.nodeRssiNadir);
             } else {
-                ioBufferWriteRssi(buffer, 0);
-                ioBufferWriteRssi(buffer, MAX_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
             }
             break;
 
@@ -296,8 +296,8 @@ void Message::handleReadCommand(const CommSource src)
             } else {
                 buffer.write8(0);
                 buffer.write16(0xFFFF);
-                ioBufferWriteRssi(buffer, 0);
-                ioBufferWriteRssi(buffer, MAX_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
             }
             break;
 
@@ -314,7 +314,7 @@ void Message::handleReadCommand(const CommSource src)
             } else {
                 buffer.write8(0);
                 buffer.write16(0xFFFF);
-                ioBufferWriteRssi(buffer, 0);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
                 buffer.write8(0);
             }
             break;
@@ -332,7 +332,7 @@ void Message::handleReadCommand(const CommSource src)
             } else {
                 buffer.write8(0);
                 buffer.write16(0xFFFF);
-                ioBufferWriteRssi(buffer, 0);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
                 buffer.write8(0);
             }
             break;
@@ -351,15 +351,14 @@ void Message::handleReadCommand(const CommSource src)
                     const mtime_t timeNowVal = usclock.millis();
                     ioBufferWriteExtremum(buffer, extremum, timeNowVal);
                 } else {
-                    ioBufferWriteRssi(buffer, 0);
+                    ioBufferWriteRssi(buffer, INVALID_RSSI);
                     buffer.write16(0);
                     buffer.write16(0);
                 }
             } else {
                 buffer.write8(0);
                 buffer.write16(0);
-                buffer.write8(0);
-                ioBufferWriteRssi(buffer, 0);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
                 buffer.write16(0);
                 buffer.write16(0);
             }
@@ -372,7 +371,7 @@ void Message::handleReadCommand(const CommSource src)
                 const Settings& settings = rssiNode.getSettings();
                 ioBufferWriteRssi(buffer, settings.enterAtLevel);
             } else {
-                ioBufferWriteRssi(buffer, MAX_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
             }
             break;
 
@@ -383,7 +382,7 @@ void Message::handleReadCommand(const CommSource src)
                 const Settings& settings = rssiNode.getSettings();
                 ioBufferWriteRssi(buffer, settings.exitAtLevel);
             } else {
-                ioBufferWriteRssi(buffer, MAX_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
             }
             break;
 
@@ -488,13 +487,13 @@ void Message::handleReadRssiHistory(RssiNode& rssiNode)
         ioBufferWriteRssi(buffer, rssiHistory.shift());
     }
     if (i<RSSI_HISTORY_PAYLOAD_SIZE && rssiNode.rssiHistoryComplete) {
-        ioBufferWriteRssi(buffer, MAX_RSSI);
+        ioBufferWriteRssi(buffer, INVALID_RSSI);
         i++;
         rssiNode.rssiHistoryComplete = false;
     }
 #endif
     for (; i<RSSI_HISTORY_PAYLOAD_SIZE; i++) {
-        ioBufferWriteRssi(buffer, 0);
+        ioBufferWriteRssi(buffer, INVALID_RSSI);
     }
 }
 
@@ -508,7 +507,7 @@ void Message::handleReadScanHistory(RssiNode& rssiNode)
         ioBufferWriteFreqRssi(buffer, scanHistory.shift());
     }
 #endif
-    const FreqRssi f_r = {0, 0};
+    const FreqRssi f_r = {0, INVALID_RSSI};
     for (; i<SCAN_HISTORY_PAYLOAD_COUNT; i++) {
         ioBufferWriteFreqRssi(buffer, f_r);
     }

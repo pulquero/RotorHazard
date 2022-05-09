@@ -218,7 +218,6 @@ class Node(CommandsWithRetry):
         self.first_cross_flag = False
         self.show_crossing_flag = False
         self.debug_pass_count = 0
-        self.bad_rssi_count = 0
 
         self.enter_at_level = 0
         self.exit_at_level = 0
@@ -272,7 +271,7 @@ class Node(CommandsWithRetry):
         self._init()
 
     def is_valid_rssi(self, value):
-        return value > 0 and value < self.manager.max_rssi_value
+        return value < self.manager.max_rssi_value
 
     def get_read_error_report_str(self):
         return "Node {0}: {1}/{2} ({3:.2%})".format(self, self.read_error_count, \
