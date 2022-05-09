@@ -415,7 +415,6 @@ class BaseHardwareInterface:
         old_frequency = node.frequency
         old_bandChannel = node.bandChannel
         if frequency != old_frequency:
-            node.debug_pass_count = 0  # reset debug pass count on frequency change
             disabled_freq = node.manager.get_disabled_frequency()
             # if frequency == 0 (node disabled) then write frequency value to power down rx module, but save 0 value
             _freq = frequency if frequency else disabled_freq
