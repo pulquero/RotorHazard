@@ -159,6 +159,11 @@ class NodeManager(CommandsWithRetry):
         self.nodes.append(node)
         return node
 
+    def remove_node(self, node):
+        if node.manager is not self:
+            raise ValueError("Node does not belong to this manager")
+        self.nodes.remove(node)
+
     def _create_node(self, index, multi_node_index):
         return Node(index, multi_node_index, self)
 

@@ -9,7 +9,7 @@
 #include "hardware.h"
 
 // API level for node; increment when commands are modified
-constexpr uint16_t NODE_API_LEVEL = 36;
+constexpr uint16_t NODE_API_LEVEL = 37;
 
 #ifdef __TEST__
 // unit tests dont supporting send 0/null
@@ -46,9 +46,9 @@ enum Command: uint8_t
     READ_ENTER_AT_LEVEL = 0x31,
     READ_EXIT_AT_LEVEL = 0x32,
     READ_TIME_MILLIS = 0x33,     // read current 'millis()' value
+    READ_ADC = 0x34,
     READ_MULTINODE_COUNT = 0x39, // read # of nodes handled by this processor
     READ_CURNODE_INDEX = 0x3A,   // read index of current node for this processor
-    READ_NODE_SLOTIDX = 0x3C,    // read node slot index (for multi-node setup)
     READ_FW_VERSION = 0x3D,      // read firmware version string
     READ_FW_BUILDDATE = 0x3E,    // read firmware build date string
     READ_FW_BUILDTIME = 0x3F,    // read firmware build time string

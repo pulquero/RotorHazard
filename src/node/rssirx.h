@@ -6,8 +6,6 @@
 #include "rx.h"
 #include "microclock.h"
 
-constexpr rssi_t MIN_RSSI_DETECT = 5;  //value for detecting node as installed
-
 
 class RssiReceivers {
 public:
@@ -20,7 +18,6 @@ public:
     virtual RssiNode& getRssiNode(uint_fast8_t idx) = 0;
     virtual RxModule& getRxModule(uint_fast8_t idx) = 0;
     virtual Settings& getSettings(uint_fast8_t idx) = 0;
-    virtual uint_fast8_t getSlotIndex(uint_fast8_t idx) const { return idx; }
     virtual uint_fast8_t getCount() const = 0;
     virtual void start(mtime_t ms, MicroClock& uclock) = 0;
     virtual bool readRssi(mtime_t ms, MicroClock& uclock) = 0;
@@ -99,8 +96,8 @@ public:
             } else {
                 idx = 0;
             }
-            RssiNode& node = nodes[idx];
             bool crossing = false;
+            RssiNode& node = nodes[idx];
             if (node.active) {
                 RssiResult result = node.process(rx.readRssi(), ms);
                 crossing = handleResult(rx, result);
@@ -117,45 +114,27 @@ public:
 template <typename RX, uint_fast8_t N> class PhysicalRssiReceivers final : public RssiReceivers {
 private:
     uint_fast8_t nodeCount = N;
-    uint_fast8_t nodeToSlot[N];
     RssiNode nodes[N];
     RX rxs[N];
 
 public:
-    PhysicalRssiReceivers() {
-        for (int_fast8_t i=N-1; i>=0; i--) {
-            nodeToSlot[i] = i;
-        }
-    }
-
-    inline RssiNode& getRssiNode(uint_fast8_t idx) { return nodes[nodeToSlot[idx]]; }
-    inline RxModule& getRxModule(uint_fast8_t idx) { return rxs[nodeToSlot[idx]]; }
-    inline Settings& getSettings(uint_fast8_t idx) { return nodes[nodeToSlot[idx]].getSettings(); }
-    inline uint_fast8_t getSlotIndex(uint_fast8_t idx) { return nodeToSlot[idx]; }
+    inline RssiNode& getRssiNode(uint_fast8_t idx) { return nodes[idx]; }
+    inline RxModule& getRxModule(uint_fast8_t idx) { return rxs[idx]; }
+    inline Settings& getSettings(uint_fast8_t idx) { return nodes[idx].getSettings(); }
     inline uint_fast8_t getCount() const { return nodeCount; }
     inline void start(const mtime_t ms, MicroClock& uclock) {
-        uint_fast8_t sIdx=0;
-        // preserve ordering
-        for (uint_fast8_t nIdx=0; nIdx<N; nIdx++) {
-            rssi_t rssi = rxs[nIdx].readRssi();
-            if (rssi > MIN_RSSI_DETECT) {
-                nodeToSlot[sIdx++] = nIdx;
-            }
-        }
-        nodeCount = sIdx;
-
         // preserve order on start
         for (uint_fast8_t i=0; i<nodeCount; i++) {
-            getRssiNode(i).start(ms, uclock.tickMicros());
+            nodes[i].start(ms, uclock.tickMicros());
         }
     }
     inline bool readRssi(const mtime_t ms, MicroClock& uclock) {
         bool anyCrossing = false;
         // preserve order on read
-        for (uint_fast8_t i=0; i<getCount(); i++) {
-            RssiNode& node = getRssiNode(i);
+        for (uint_fast8_t i=0; i<nodeCount; i++) {
+            RssiNode& node = nodes[i];
             if (node.active) {
-                RxModule& rx = getRxModule(i);
+                RxModule& rx = rxs[i];
                 RssiResult result = node.process(rx.readRssi(), ms);
                 if (handleResult(rx, result)) {
                     anyCrossing = true;

@@ -253,6 +253,17 @@ void Message::handleReadCommand(const CommSource src)
             }
             break;
 
+        case READ_ADC:
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
+                uint16_t val = analogRead(rx.getRssiPin());
+                buffer.write16(val);
+            } else {
+                buffer.write16(0xFF);
+            }
+            break;
+
         case READ_RSSI:
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
@@ -424,15 +435,6 @@ void Message::handleReadCommand(const CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 buffer.write8(cmdRssiNodeIndex);
-            } else {
-                buffer.write8(0xFF);
-            }
-            break;
-
-        case READ_NODE_SLOTIDX:
-            if (cmdRssiNodeIndex < rssiRxs.getCount())
-            {
-                buffer.write8(rssiRxs.getSlotIndex(cmdRssiNodeIndex));
             } else {
                 buffer.write8(0xFF);
             }

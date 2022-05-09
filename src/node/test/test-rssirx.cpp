@@ -10,10 +10,8 @@
     for (int i=0; i<rssirx.getCount(); i++) { \
         rssirx.getRssiNode(i); \
         RxModule& rx = rssirx.getRxModule(i); \
-        assertEqual(HIGH, nano->digitalPin[rx.selPin]); \
+        assertEqual(HIGH, nano->digitalPin[rx.getChipSelectPin()]); \
         rssirx.getSettings(i); \
-        assertEqual(i, rssirx.getSlotIndex(i)); \
-        nano->analogPin[rx.rssiPin] = (MIN_RSSI_DETECT + 1) << 1; \
     } \
     rssirx.start(0, usclock); \
     assertEqual(numRxs, rssirx.getCount()); \
@@ -45,17 +43,6 @@ unittest(physical_rx_2)
     hardware.initRxModule(0, rssirx.getRxModule(0));
     hardware.initRxModule(1, rssirx.getRxModule(1));
     assertRssiRx(rssirx, 2);
-}
-
-unittest(physical_rx_2_no_rssi)
-{
-    GodmodeState* nano = GODMODE();
-    nano->reset();
-    PhysicalRssiReceivers<RX_IMPL,2> rssirx;
-    hardware.initRxModule(0, rssirx.getRxModule(0));
-    hardware.initRxModule(1, rssirx.getRxModule(1));
-    rssirx.start(0, usclock); \
-    assertEqual(0, rssirx.getCount()); \
 }
 
 unittest(virtual_rx_0)
