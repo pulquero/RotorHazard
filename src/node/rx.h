@@ -83,11 +83,11 @@ class RxModule final {
 private:
     uint8_t selPin = 0;
     uint8_t rssiPin = 0;
-    bool rxPoweredDown = false;
     SPIProtocol* spi = nullptr;
     mtime_t lastSpiIOTimeMs = 0;
 #ifndef USE_SPI_3WIRE_READ
     freq_t frequency;
+    bool rxPoweredDown = false;
 #endif
     void spiBegin();
     void spiEnd();
@@ -100,15 +100,15 @@ public:
     RxModule& operator=(RxModule&&) = delete;
 
     void init(SPIProtocol* spi, uint8_t selPin, uint8_t rssiPin);
-    uint8_t getChipSelectPin() { return selPin; }
-    uint8_t getRssiPin() { return rssiPin; }
+    uint8_t getChipSelectPin() const { return selPin; }
+    uint8_t getRssiPin() const { return rssiPin; }
     void setFrequency(freq_t frequency);
     freq_t getFrequency();
     void setPower(uint32_t options);
-    rssi_t readRssi();
+    rssi_t readRssi() const;
     void powerUp();
     void powerDown();
-    const bool isPoweredDown() { return rxPoweredDown; }
+    bool isPoweredDown();
     void reset();
 };
 #endif
