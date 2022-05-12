@@ -16,6 +16,9 @@ constexpr uint8_t RECEIVER_CONTROL_REGISTER_2 = 0x09;
 constexpr uint8_t POWER_DOWN_CONTROL_REGISTER = 0x0A;
 constexpr uint8_t STATE_REGISTER = 0x0F;
 
+constexpr uint32_t POWER_UP_VALUE   = 0b11010000110111110011;
+constexpr uint32_t POWER_DOWN_VALUE = 0b11111111111111111111;
+
 #define SPI_CHILL_TIME 40
 
 // Calculate rx5808 register hex value for given frequency in MHz
@@ -109,19 +112,35 @@ void RxModule::setPower(const uint32_t options)
 // Set up rx5808 module (disabling unused features to save some power)
 void RxModule::powerUp()
 {
-    setPower(0b11010000110111110011);
+    setPower(POWER_UP_VALUE);
+#ifndef USE_SPI_3WIRE_READ
     rxPoweredDown = false;
+#endif
 }
 
 // Power down rx5808 module
 void RxModule::powerDown()
 {   
-    setPower(0b11111111111111111111);
+    setPower(POWER_DOWN_VALUE);
+#ifndef USE_SPI_3WIRE_READ
     rxPoweredDown = true;
+#endif
+}
+
+bool RxModule::isPoweredDown()
+{
+#ifdef USE_SPI_3WIRE_READ
+    spiBegin();
+      uint32_t options = spi->read(selPin, POWER_DOWN_CONTROL_REGISTER);
+    spiEnd();
+    return (options == POWER_DOWN_VALUE);
+#else
+    return this->rxPoweredDown;
+#endif
 }
 
 // Read the RSSI value for the current channel
-rssi_t RxModule::readRssi()
+rssi_t RxModule::readRssi() const
 {
     const rssi_t value = hardware.readADC(rssiPin);
     LOG_DEBUG("ADC: ", value, DEC);
