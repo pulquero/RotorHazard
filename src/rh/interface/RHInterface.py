@@ -244,8 +244,7 @@ class RHNodeManager(NodeManager):
             for slot in range(multi_count):
                 node = self.add_node(next_index)
                 node.multi_node_slot_index = slot
-                adc_data = node.read_command(READ_ADC, 2)
-                adc_val = unpack_16(adc_data)
+                adc_val = node.read_adc()
                 if adc_val != 0xFFFF and adc_val > MIN_ADC_VALUE:
                     logger.info("Node {} (slot {}) added at {}".format(next_index+1, node.multi_node_slot_index+1, node.addr))
                     next_index += 1
@@ -277,6 +276,18 @@ class RHNode(Node):
     def reset(self):
         super().reset()
         self._loop_time_stats.clear()
+
+    def read_adc(self):
+        adc_data = self.read_command(READ_ADC, 2)
+        return unpack_16(adc_data)
+
+    def read_rssi(self):
+        rssi_data = self.read_command(READ_RSSI, 3)
+        return unpack_rssi(self, rssi_data)
+
+    def read_frequency(self):
+        freq_data = self.read_command(READ_FREQUENCY, 2)
+        return unpack_16(freq_data)
 
     def get_sent_time_ms(self):
         server_roundtrip_ms = self.io_response_ms - self.io_request_ms
