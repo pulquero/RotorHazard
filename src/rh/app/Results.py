@@ -35,7 +35,7 @@ LEADERBOARD_BUILDERS = {
 
 def _current_race_cache_key(*args, **kwargs):
     current_race = args[0]
-    return cachetools.hashkey(id(current_race), current_race.modification_count)
+    return cachetools.keys.hashkey(id(current_race), current_race.modification_count)
 
 
 class ResultsCache:
@@ -54,19 +54,19 @@ class ResultsCache:
         self._team_cache_lock = Lock()
 
     def evict_race(self, race_id):
-        self._race_cache.pop(cachetools.hashkey(race_id), None)
+        self._race_cache.pop(cachetools.keys.hashkey(race_id), None)
 
     def clear_races(self):
         self._race_cache.clear()
 
     def evict_heat(self, heat_id):
-        self._heat_cache.pop(cachetools.hashkey(heat_id), None)
+        self._heat_cache.pop(cachetools.keys.hashkey(heat_id), None)
 
     def clear_heats(self):
         self._heat_cache.clear()
 
     def evict_class(self, class_id):
-        self._heat_cache.pop(cachetools.hashkey(class_id), None)
+        self._heat_cache.pop(cachetools.keys.hashkey(class_id), None)
 
     def clear_classes(self):
         self._class_cache.clear()
