@@ -2,6 +2,7 @@
 
 from enum import IntEnum
 from rh.util import RHUtils
+from typing import Dict
 
 
 class RHRace():
@@ -12,7 +13,7 @@ class RHRace():
         self.current_heat = 1  # heat ID
         self.current_round = 1
         self.current_stage = None
-        self.node_pilots = {}  # current race pilots, by node, filled on heat change
+        self.node_pilots: Dict[int,RHPilot] = {}  # current race pilots, by node, filled on heat change
         self._format = None  # raceformat object
         # sequence
         self.scheduled = False  # Whether to start a race when time
@@ -35,8 +36,8 @@ class RHRace():
         self.end_time_ms =  0  # Monotonic, updated when race is stopped
         self.end_time_epoch_ms = 0  # ms since 1970-01-01
         # leaderboard/cache
-        self.result_fn = lambda race: None
-        self.team_result_fn = lambda race: None
+        self.result_fn = lambda current_race: None
+        self.team_result_fn = lambda current_race: None
         self.status_message = ''  # Race status message (winner, team info)
 
         self.win_status = WinStatus.NONE  # whether race is won

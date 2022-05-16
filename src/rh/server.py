@@ -192,7 +192,7 @@ server_ipaddress_str = None
 ShutdownButtonInputHandler = None
 Server_secondary_mode = None
 
-RACE = RHRace.RHRace() # For storing race management variables
+RACE = RHRace.RHRace()  # For storing race management variables
 LAST_RACE: Optional[RHRace.RHRace] = None
 SECONDARY_RACE_FORMAT: Optional['RHRaceFormat'] = None
 RESULTS_CACHE = Results.ResultsCache()
@@ -208,8 +208,8 @@ def __web(text):
     return LANGUAGE.__(text, lang)
 
 __sys = LANGUAGE.__
-__ = __web # Shortcut to translation function
-RHDATA.late_init(PAGE_CACHE, LANGUAGE) # Give RHDATA additional references
+__ = __web  # Shortcut to translation function
+RHDATA.late_init(PAGE_CACHE, LANGUAGE)  # Give RHDATA additional references
 
 APP.rhserver = vars()
 
