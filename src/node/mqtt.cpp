@@ -4,6 +4,7 @@
 #include "rssirx.h"
 #include "mqtt.h"
 #include "hardware.h"
+#include "commands.h"
 
 static int sprintNodeTopic(char* dest);
 
@@ -117,23 +118,12 @@ void mqttProcessMessage(const char topic[], const char msg[], const int msgLen) 
                     char szFreq[maxFreqDigits+1];
                     if (msgLen <= maxFreqDigits && copyNonNegativeInteger(szFreq, msg, msgLen)) {
                         freq_t freq = atol(szFreq);
-                        Settings& settings = rssiNode.getSettings();
-                        if (freq != settings.vtxFreq)
-                        {
-                            settings.vtxFreq = freq;
-                            hardware.storeFrequency(freq);
-                            rssiNode.resetState(usclock.millis());  // restart rssi peak tracking for node
-                        }
-                        if (rx.isPoweredDown()) {
-                            rx.reset();
-                        }
-                        rx.setFrequency(freq);
-                        rssiNode.active = true;
+                        setFrequency(rssiNode, rx, freq);
                     }
                 } else if (strcmp(endIdxPtr, "/power") == 0) {
                     if (msgLen == 1 && msg[0] == '1' && rx.isPoweredDown()) {
                         rx.reset();
-                        rssiNode.resetState(usclock.millis());  // restart rssi peak tracking for node
+                        rssiNode.resetState(usclock.millis());
                         rssiNode.active = true;
                     } else if (msgLen == 1 && msg[0] == '0' && !rx.isPoweredDown()) {
                         rx.powerDown();

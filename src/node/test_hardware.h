@@ -4,7 +4,6 @@ class TestHardware : public Hardware {
 public:
     bool isInit;
     bool isRxInit[MULTI_RHNODE_MAX];
-    bool isSettingsInit[MULTI_RHNODE_MAX];
 
     TestHardware() : Hardware(HIGH,LOW) {
     }
@@ -26,11 +25,6 @@ public:
         printf("Initializing RX module %d with pins: chip-select=%u, rssi=%u\n", nIdx, selPin, rssiPin);
         rx.init(&spi, selPin, rssiPin);
         isRxInit[nIdx] = true;
-    }
-    void initSettings(uint_fast8_t nIdx, Settings& settings)
-    {
-        printf("Initializing settings for RX module %d\n", nIdx);
-        isSettingsInit[nIdx] = true;
     }
     void setStatusLed(bool onFlag) {
         bool currentFlag = currentStatusLedFlag;
