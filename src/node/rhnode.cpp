@@ -55,7 +55,6 @@ void setup()
         rx.reset();
 
         Settings& settings = rssiRxs.getSettings(i);
-        hardware.initSettings(i, settings);
         if (settings.vtxFreq == POWER_OFF_FREQ)
         {
             rx.powerDown();

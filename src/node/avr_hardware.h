@@ -2,21 +2,12 @@
 #include "hardware.h"
 #include "commands.h"
 #include "i2c.h"
-#include "rheeprom.h"
 
 #define SERIAL_BAUD_RATE 115200
 
 #define SERIALCOM Serial
 
 #define COMMS_MONITOR_TIME_MS 5000 //I2C communications monitor grace/trigger time
-
-#define EEPROM_ADRW_RXFREQ 0       //address for stored RX frequency value
-#define EEPROM_ADRW_ENTERAT 2      //address for stored 'enterAtLevel'
-#define EEPROM_ADRW_EXITAT 4       //address for stored 'exitAtLevel'
-#define EEPROM_ADRW_EXPIRE 6       //address for stored catch history expire duration
-#define EEPROM_ADRW_CHECKWORD 8    //address for integrity-check value
-#define EEPROM_CHECK_VALUE 0x3526  //EEPROM integrity-check value
-#define EEPROM_SETTINGS_SIZE 16
 
 // Defines for fast ADC reads
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
@@ -134,25 +125,6 @@ public:
         cbi(ADCSRA, ADPS0);
     }
 
-    void initSettings(uint_fast8_t nIdx, Settings& settings)
-    {
-        int offset = nIdx*EEPROM_SETTINGS_SIZE;
-        // if EEPROM-check value matches then read stored values
-        if (eepromReadWord(offset + EEPROM_ADRW_CHECKWORD) == EEPROM_CHECK_VALUE)
-        {
-            settings.vtxFreq = eepromReadWord(offset + EEPROM_ADRW_RXFREQ);
-            settings.enterAtLevel = eepromReadWord(offset + EEPROM_ADRW_ENTERAT);
-            settings.exitAtLevel = eepromReadWord(offset + EEPROM_ADRW_EXITAT);
-        }
-        else
-        {    // if no match then initialize EEPROM values
-            eepromWriteWord(offset + EEPROM_ADRW_RXFREQ, settings.vtxFreq);
-            eepromWriteWord(offset + EEPROM_ADRW_ENTERAT, settings.enterAtLevel);
-            eepromWriteWord(offset + EEPROM_ADRW_EXITAT, settings.exitAtLevel);
-            eepromWriteWord(offset + EEPROM_ADRW_CHECKWORD, EEPROM_CHECK_VALUE);
-        }
-    }
-
     void initRxModule(uint_fast8_t nIdx, RxModule& rx)
     {
         uint16_t selPin = RX5808_SEL_PIN;    //CLK (CH3) output line to RX5808 module
@@ -229,20 +201,5 @@ public:
     uint8_t getAddress()
     {
         return i2cAddress;
-    }
-
-    void storeFrequency(freq_t freq)
-    {
-        eepromWriteWord(EEPROM_ADRW_RXFREQ, freq);
-    }
-
-    void storeEnterAtLevel(rssi_t rssi)
-    {
-        eepromWriteWord(EEPROM_ADRW_ENTERAT, rssi);
-    }
-
-    void storeExitAtLevel(rssi_t rssi)
-    {
-        eepromWriteWord(EEPROM_ADRW_EXITAT, rssi);
     }
 };
