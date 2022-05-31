@@ -12,23 +12,27 @@ constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_SIZE = SCAN_HISTORY_PAYLOAD_COUNT*si
 uint8_t volatile cmdStatusFlags = NO_STATUS;
 uint_fast8_t volatile cmdRssiNodeIndex = 0;
 
-inline bool setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
+inline void setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
+    Settings& settings = rssiNode.getSettings();
     if (freq == POWER_OFF_FREQ) {
         rx.powerDown();
+        settings.vtxFreq = POWER_OFF_FREQ;
         rssiNode.active = false;
-    } else if (freq > 0) {
+    } else {
         if (rx.isPoweredDown()) {
             rx.reset();  // reset and power-up
         }
         rx.setFrequency(freq);
-        freq_t newFreq = rx.getFrequency();
-        if (newFreq != canonicalFrequency(freq)) {
-            LOG_ERROR("Failed to set vrx frequency, currently is ", newFreq, DEC);
-            return false;
+        freq_t actualFreq = rx.getFrequency();
+        if (actualFreq == canonicalFrequency(freq)) {
+            settings.vtxFreq = freq;
+            rssiNode.active = true;
+        } else {
+            LOG_ERROR("Failed to set vrx frequency, currently is ", actualFreq, DEC);
+            settings.vtxFreq = ERR_FREQ;
+            rssiNode.active = false;
         }
-        rssiNode.active = true;
     }
-    return true;
 }
 
 int_fast8_t Message::getPayloadSize() const
@@ -76,15 +80,8 @@ void Message::handleWriteCommand(const CommSource src)
                     RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                     Settings& settings = rssiNode.getSettings();
                     RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
-                    if (setFrequency(rssiNode, rx, freq))
-                    {
-                        if (freq != settings.vtxFreq) {
-                            settings.vtxFreq = freq;
-                            hardware.storeFrequency(freq);
-                        }
-                    } else {
-                        settings.vtxFreq = ERR_FREQ;
-                    }
+                    setFrequency(rssiNode, rx, freq);
+                    hardware.storeFrequency(freq);
                     rssiNode.resetState(usclock.millis());  // restart rssi peak tracking for node
                 }
             }
@@ -193,24 +190,27 @@ void Message::setMode(const Mode mode) const
     switch (mode) {
         case TIMER:
             rssiNode.setFilter(&(rssiNode.defaultFilter));
+            rssiNode.resetState(usclock.millis());
             settings.mode = mode;
             break;
         case SCANNER:
 #ifdef SCAN_HISTORY
             rssiNode.scanHistory.clear();
             rssiNode.setFilter(&(rssiNode.medianFilter));
-            settings.vtxFreq = MIN_SCAN_FREQ;
             {
                 RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
-                setFrequency(rssiNode, rx, settings.vtxFreq);
+                setFrequency(rssiNode, rx, MIN_SCAN_FREQ);
+                if (rssiNode.active) {
+                    settings.mode = mode;
+                }
             }
-            settings.mode = mode;
 #endif
             break;
         case RAW:
 #ifdef RSSI_HISTORY
             rssiNode.rssiHistory.clear();
             rssiNode.setFilter(&(rssiNode.noFilter));
+            rssiNode.resetState(usclock.millis());
             settings.mode = mode;
 #endif
             break;

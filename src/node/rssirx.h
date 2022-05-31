@@ -24,7 +24,7 @@ public:
 };
 
 
-inline bool handleResult(RxModule& rx, const RssiResult result) {
+inline bool handleResult(RssiNode& node, RxModule& rx, const RssiResult result, MicroClock& uclock) {
     bool crossing = false;
     switch (result.mode) {
         case TIMER:
@@ -33,6 +33,10 @@ inline bool handleResult(RxModule& rx, const RssiResult result) {
         case SCANNER:
             if (result.nextFreq > 0) {
                 rx.setFrequency(result.nextFreq);
+                Settings& settings = node.getSettings();
+                // get the actual frequency we will be scanning
+                settings.vtxFreq = rx.getFrequency();
+                node.resetState(uclock.millis());
             }
             break;
     }
@@ -56,7 +60,7 @@ public:
         bool crossing = false;
         if (node.active) {
             RssiResult result = node.process(rx.readRssi(), ms);
-            crossing = handleResult(rx, result);
+            crossing = handleResult(node, rx, result, uclock);
         }
         node.getState().updateLoopTime(uclock.tickMicros());
         return crossing;
@@ -100,7 +104,7 @@ public:
             RssiNode& node = nodes[idx];
             if (node.active) {
                 RssiResult result = node.process(rx.readRssi(), ms);
-                crossing = handleResult(rx, result);
+                crossing = handleResult(node, rx, result, uclock);
             }
             node.getState().updateLoopTime(uclock.tickMicros());
             return crossing;
@@ -136,7 +140,7 @@ public:
             if (node.active) {
                 RxModule& rx = rxs[i];
                 RssiResult result = node.process(rx.readRssi(), ms);
-                if (handleResult(rx, result)) {
+                if (handleResult(node, rx, result, uclock)) {
                     anyCrossing = true;
                 }
             }

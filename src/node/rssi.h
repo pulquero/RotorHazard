@@ -65,7 +65,7 @@ constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 
 constexpr freq_t MIN_SCAN_FREQ = 5645;
 constexpr freq_t MAX_SCAN_FREQ = 5945;
-constexpr uint16_t SCAN_FREQ_INCR = 5;
+constexpr uint16_t SCAN_FREQ_INCR = 4;
 
 enum Mode
 {
@@ -214,7 +214,6 @@ struct RssiResult
     union {
         bool crossing;
         freq_t nextFreq;
-        bool none;
     };
 };
 
@@ -246,12 +245,10 @@ private:
 
     Filter<rssi_t> *filter;
 
-    inline RssiResult timerHandler(int rssiChange);
-    inline RssiResult scannerHandler(int rssiChange);
-    inline RssiResult rawHandler(int rssiChange);
+    inline bool timerHandler(int rssiChange);
+    inline freq_t scannerHandler(int rssiChange);
+    inline void rawHandler(int rssiChange);
     inline ExtremumType updateHistory(int rssiChange);
-    inline freq_t updateScanHistory(freq_t freq);
-    inline void updateRssiHistory();
     bool checkForCrossing(ExtremumType t, int rssiChange);
 #if defined(USE_PH) || defined(__TEST__)
 #ifdef __TEST__
