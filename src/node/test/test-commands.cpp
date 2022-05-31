@@ -189,12 +189,12 @@ unittest(command_scanner)
     sendData(nano, modeCmd, sizeof(modeCmd), serialMessage);
     assertEqual(SCANNER, rssiRxs.getRssiNode(0).getSettings().mode);
     assertEqual(MIN_SCAN_FREQ, rssiRxs.getRssiNode(0).getSettings().vtxFreq);
+    assertTrue(rssiRxs.getRssiNode(0).active);
     // wait for some frequency changes
     for (int i=0; i<200; i++) {
         loop();
         nano->micros += 1000;
     }
-    assertTrue(rssiRxs.getRssiNode(0).active);
     assertEqual(SCAN_HISTORY_SIZE, (int)rssiRxs.getRssiNode(0).scanHistory.size());
     assertEqual(MIN_SCAN_FREQ+4*SCAN_FREQ_INCR, rssiRxs.getRssiNode(0).getSettings().vtxFreq);
 
