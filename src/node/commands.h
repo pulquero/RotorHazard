@@ -91,6 +91,7 @@ public:
     void handleReadCommand(CommSource src);
 };
 
+void setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq);
 void handleStreamEvent(Stream& stream, Message& msg, CommSource src);
 void sendReadCommandResponse(Stream& stream, Message& msg, CommSource src);
 void validateAndProcessWriteCommand(Message& msg, CommSource src);

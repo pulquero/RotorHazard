@@ -12,7 +12,7 @@ constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_SIZE = SCAN_HISTORY_PAYLOAD_COUNT*si
 uint8_t volatile cmdStatusFlags = NO_STATUS;
 uint_fast8_t volatile cmdRssiNodeIndex = 0;
 
-inline void setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
+void setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
     Settings& settings = rssiNode.getSettings();
     if (freq == POWER_OFF_FREQ) {
         rx.powerDown();
@@ -26,6 +26,7 @@ inline void setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
         freq_t actualFreq = rx.getFrequency();
         if (actualFreq == canonicalFrequency(freq)) {
             settings.vtxFreq = freq;
+            rssiNode.resetState(usclock.millis());
             rssiNode.active = true;
         } else {
             LOG_ERROR("Failed to set vrx frequency, currently is ", actualFreq, DEC);
@@ -81,8 +82,6 @@ void Message::handleWriteCommand(const CommSource src)
                     Settings& settings = rssiNode.getSettings();
                     RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
                     setFrequency(rssiNode, rx, freq);
-                    hardware.storeFrequency(freq);
-                    rssiNode.resetState(usclock.millis());  // restart rssi peak tracking for node
                 }
             }
             break;
@@ -101,11 +100,7 @@ void Message::handleWriteCommand(const CommSource src)
                 const rssi_t rssiVal = ioBufferReadRssi(buffer);
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                 Settings& settings = rssiNode.getSettings();
-                if (rssiVal != settings.enterAtLevel)
-                {
-                    settings.enterAtLevel = rssiVal;
-                    hardware.storeEnterAtLevel(settings.enterAtLevel);
-                }
+                settings.enterAtLevel = rssiVal;
             }
             break;
 
@@ -115,11 +110,7 @@ void Message::handleWriteCommand(const CommSource src)
                 const rssi_t rssiVal = ioBufferReadRssi(buffer);
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                 Settings& settings = rssiNode.getSettings();
-                if (rssiVal != settings.exitAtLevel)
-                {
-                    settings.exitAtLevel = rssiVal;
-                    hardware.storeExitAtLevel(settings.exitAtLevel);
-                }
+                settings.exitAtLevel = rssiVal;
             }
             break;
 
