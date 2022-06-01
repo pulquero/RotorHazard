@@ -684,8 +684,8 @@ nodeModel.prototype = {
 	},
 	updateThresholds: function(){
 		this.graph.options.horizontalLines = [
-			{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.enter_at_level}, // red
-			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.exit_at_level}, // orange
+			{color:'hsl(8.2, 86.5%, 53.7%)', lineWidth:1.7, value: this.enter_at_level + this.graph.options.minValue}, // red
+			{color:'hsl(25, 85%, 55%)', lineWidth:1.7, value: this.exit_at_level + this.graph.options.minValue}, // orange
 			// {color:'#999', lineWidth:1.7, value: this.node_peak_rssi},
 			// {color:'#666', lineWidth:1.7, value: this.pass_nadir_rssi},
 		];

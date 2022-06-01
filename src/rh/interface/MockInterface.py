@@ -125,14 +125,14 @@ class MockInterface(BaseHardwareInterface):
                             cmd = json_data['cmd']
                             cmd_values = json_data['data']
                             if cmd == READ_RSSI:
-                                cmd_values = (now_ms,) + cmd_values
+                                cmd_values = [now_ms] + cmd_values
                             elif cmd == READ_ENTER_STATS or cmd == READ_EXIT_STATS:
                                 cmd_values[1] = now_ms - cmd_values[1]
                             elif cmd == READ_LAP_STATS:
                                 cmd_values[1] = now_ms - cmd_values[1]
                             elif cmd == READ_ANALYTICS:
                                 cmd_values[4] = now_ms - cmd_values[4]
-                                cmd_values = (now_ms,) + cmd_values
+                                cmd_values = [now_ms] + cmd_values
 
                         if cmd == READ_RSSI:
                             self.is_new_lap(node, *cmd_values)
