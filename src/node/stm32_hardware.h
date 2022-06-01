@@ -68,7 +68,8 @@ private:
 #ifdef ENABLE_SERIALUSB
     void initUSBSerial(USBSerial& ser, unsigned long baudRate) {
         ser.begin(baudRate);  // Start serial interface
-        while (!ser) {
+        int count = 0;
+        while (!ser && (count++ < EXCEPTION_LIMIT)) {
             delay(1);  // Wait for the Serial port to initialize
         }
     }
