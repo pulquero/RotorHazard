@@ -65,6 +65,15 @@ private:
         }
     }
 
+#ifdef ENABLE_SERIALUSB
+    void initUSBSerial(USBSerial& ser, unsigned long baudRate) {
+        ser.begin(baudRate);  // Start serial interface
+        while (!ser) {
+            delay(1);  // Wait for the Serial port to initialize
+        }
+    }
+#endif
+
 public:
     Stm32Hardware() : Hardware(LOW,HIGH) {
     }
@@ -74,7 +83,11 @@ public:
         const uint8_t clkPin = PB4;   //CLK (CH3) output line to (all) RX5808 modules
         const uint8_t dataPin = PB3;  //DATA (CH1) output line to (all) RX5808 modules
         spi.init(clkPin, dataPin);
+#ifdef ENABLE_SERIALUSB
+        initUSBSerial(SERIALCOM, SERIAL_BAUD_RATE);
+#else
         initSerial(SERIALCOM, SERIAL_BAUD_RATE);
+#endif
     }
 
     void initRxModule(uint_fast8_t nIdx, RxModule& rx)
