@@ -163,6 +163,7 @@
 
 #define NTP_SERVER "pool.ntp.org"
 
+#define EXCEPTION_LIMIT 1000 // max count for while loop of initSerial and initUSBSerial
 
 // Pins
 
