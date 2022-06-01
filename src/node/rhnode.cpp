@@ -67,7 +67,7 @@ void setup()
     }
 
     // start
-    rssiRxs.start(usclock.millis(), usclock);
+    rssiRxs.start(usclock);
 }
 
 static utime_t previousTick = 0;
@@ -80,8 +80,7 @@ void loop()
     // unsigned arithmetic to handle roll-over
     if ((us - previousTick) >= 1000)  // limit to once per millisecond
     {
-        const mtime_t ms = usclock.millis();
-        const bool crossingFlag = rssiRxs.readRssi(ms, usclock);
+        const bool crossingFlag = rssiRxs.readRssi();
         previousTick = us;
 
         // update settings and status LED
@@ -100,6 +99,7 @@ void loop()
             cmdNode.active = true;
         }
 
+        const mtime_t ms = usclock.millis();
         hardware.processStatusFlags(ms, currentStatusFlags);
 
         currentStatusFlags &= ~POLLING;
