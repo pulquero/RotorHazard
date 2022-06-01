@@ -49,7 +49,7 @@ void RssiNode::resetState(const mtime_t ms)
 
 RssiResult RssiNode::process(const rssi_t rssi, const mtime_t ms)
 {
-    RssiResult result = {settings.mode, 0};
+    RssiResult result = {0};
 
     currentMillis = ms;
 

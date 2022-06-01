@@ -208,13 +208,10 @@ struct LastTrigger
     uint8_t volatile lifetime = 0;
 };
 
-struct RssiResult
+union RssiResult
 {
-    Mode mode;
-    union {
-        bool crossing;
-        freq_t nextFreq;
-    };
+    bool crossing;
+    freq_t nextFreq;
 };
 
 class RssiNode

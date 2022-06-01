@@ -13,9 +13,9 @@
         assertEqual(HIGH, nano->digitalPin[rx.getChipSelectPin()]); \
         rssirx.getSettings(i); \
     } \
-    rssirx.start(0, usclock); \
+    rssirx.start(usclock); \
     assertEqual(numRxs, rssirx.getCount()); \
-    assertFalse(rssirx.readRssi(0, usclock)); \
+    assertFalse(rssirx.readRssi()); \
 }
 
 unittest(single_rx)
