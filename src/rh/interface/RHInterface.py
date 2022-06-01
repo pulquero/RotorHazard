@@ -401,9 +401,10 @@ class RHNode(Node):
             rssi_val = unpack_rssi(self, data[3:])
             if self.is_valid_rssi(rssi_val):
                 extremum_rssi = rssi_val
-                ms_since_first_time = unpack_time_since(self, READ_ANALYTICS, data[4:])  # ms *since* the first time
-                extremum_timestamp_ms = sent_timestamp_ms - ms_since_first_time
-                extremum_duration_ms = unpack_16(data[6:])
+
+            ms_since_first_time = unpack_time_since(self, READ_ANALYTICS, data[4:])  # ms *since* the first time
+            extremum_timestamp_ms = sent_timestamp_ms - ms_since_first_time
+            extremum_duration_ms = unpack_16(data[6:])
 
             if self.data_logger is not None:
                 self.data_logger.data_buffer.append((

@@ -216,6 +216,7 @@
 							rotorhazard.nodes[i].crossingSeries.append(now, -10);
 						}
 						rotorhazard.nodes[i].lifetimeSeries.append(now, Math.abs(lifetimeValue) + rotorhazard.nodes[i].graph.options.minValue);
+						rotorhazard.nodes[i].updateThresholds();
 					}
 				}
 			}

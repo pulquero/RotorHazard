@@ -203,11 +203,15 @@ class BaseHardwareInterface:
         if is_crossing:
             if self.lap_count_change(trigger_count, node.pass_count) > 1:
                 logger.warning("Missed enter on node {}!!! (count was {}, now is {})".format(node, node.pass_count, trigger_count))
-            node.enter_stats_status = DataStatus.RETRIEVED
+                node.enter_stats_status = DataStatus.NOT_AVAILABLE
+            else:
+                node.enter_stats_status = DataStatus.RETRIEVED
         else:
             if self.lap_count_change(trigger_count, node.pass_count) > 1:
                 logger.warning("Missed exit on node {}!!! (count was {}, now is {})".format(node, node.pass_count, trigger_count))
-            node.exit_stats_status = DataStatus.RETRIEVED
+                node.exit_stats_status = DataStatus.NOT_AVAILABLE
+            else:
+                node.exit_stats_status = DataStatus.RETRIEVED
 
         # NB: crossing race times are relative to the race start time
         crossing_race_time = trigger_timestamp - self.race_start_time_ms
