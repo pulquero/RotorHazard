@@ -1,6 +1,6 @@
-![RotorHazard Logo](/src/server/static/image/RotorHazard%20Logo.svg)
+![RotorHazard Logo](/src/rh/static/image/RotorHazard%20Logo.svg)
 
-![CI](https://github.com/pulquero/RotorHazard/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/pulquero/RotorHazard/actions/workflows/ci.yml/badge.svg)](https://github.com/pulquero/RotorHazard/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/github/pulquero/RotorHazard/coverage.svg?branch=BetaHazard)](https://codecov.io/gh/pulquero/RotorHazard/)
 
 # BetaHazard - the forthcoming RotorHazard v4 Beta
