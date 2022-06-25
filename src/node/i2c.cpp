@@ -8,10 +8,7 @@
 static void i2cOnReceive(int byteCount);
 static void i2cOnRequest();
 
-static volatile bool i2cReadyForReceive;
-static volatile Command i2cCommand = INVALID_COMMAND;
-static volatile uint8_t i2cPayload[BUFFER_LENGTH-1];  // BUFFER_LENGTH declared in Wire.h
-static volatile uint8_t i2cPayloadSize;
+static volatile Message incomingMessage;
 
 void i2cInit(uint8_t i2cAddress, bool reset) {
     hardware.setStatusLed(true);
@@ -21,48 +18,67 @@ void i2cInit(uint8_t i2cAddress, bool reset) {
     }
     hardware.setStatusLed(false);
 
-    Wire.begin(i2cAddress);
+    Wire.setWireTimeout();
     Wire.onReceive(i2cOnReceive);
     Wire.onRequest(i2cOnRequest);
+    Wire.begin(i2cAddress);
 
     TWAR = (i2cAddress << 1) | 1;  // enable broadcasts to be received
 }
 
+/**
+ * Processes payloads of write commands in the main loop
+ */
 void i2cEventRun() {
-    if (!i2cReadyForReceive) {
+    if (incomingMessage.command != INVALID_COMMAND) {
         Message msg;
-        msg.command = i2cCommand;
-        for (int_fast8_t i = 0; i < i2cPayloadSize; i++) {
-            msg.buffer.data[i] = i2cPayload[i];
+        // copy any incoming message for later processing
+        ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+            if (incomingMessage.isWriteCommand()) {
+                msg.command = incomingMessage.command;
+                const int size = incomingMessage.buffer.size;
+                for (int_fast8_t i = size - 1; i >= 0; i--) {
+                    msg.buffer.data[i] = incomingMessage.buffer.data[i];
+                }
+                msg.buffer.size = size;
+                incomingMessage.command = INVALID_COMMAND;
+            }
         }
-        msg.buffer.index = i2cPayloadSize;
-        msg.buffer.size = i2cPayloadSize;
-        i2cCommand = INVALID_COMMAND;
-        i2cPayloadSize = 0;
-        i2cReadyForReceive = true;
-        validateAndProcessWriteCommand(msg, I2C_SOURCE);
+        if (msg.isWriteCommand()) {
+            const uint8_t expectedBufferSize = msg.getPayloadSize() + 1;
+            if (msg.buffer.size == expectedBufferSize) {
+                msg.buffer.index = expectedBufferSize;
+                validateAndProcessWriteCommand(msg, I2C_SOURCE);
+            }
+        }
     }
 }
 
+/**
+ * ISR for receiving I2C data.
+ */
 void i2cOnReceive(int bytesAvailable) {
-    if (i2cReadyForReceive && bytesAvailable > 0) {
-        i2cCommand = Wire.read();
-        i2cPayloadSize = bytesAvailable - 1;
-        for (int_fast8_t i = 0; i<i2cPayloadSize; i++) {
-            i2cPayload[i] = Wire.read();
+    if (bytesAvailable > 0 && bytesAvailable <= incomingMessage.buffer.capacity()) {
+        incomingMessage.command = Wire.read();
+        const int size = bytesAvailable - 1;
+        for (int_fast8_t i = 0; i < size; i++) {
+            incomingMessage.buffer.data[i] = Wire.read();
         }
-        if (isWriteCommand(i2cCommand)) {
-            i2cReadyForReceive = false;
-        }
+        incomingMessage.buffer.size = size;
     }
 }
 
+/**
+ * ISR for sending I2C data.
+ */
 void i2cOnRequest() {
-    Message msg;
-    msg.command = i2cCommand;
-    msg.handleReadCommand(I2C_SOURCE);
-    sendReadCommandResponse(Wire, msg, I2C_SOURCE);
-    i2cCommand = INVALID_COMMAND;
+    const Command cmd = incomingMessage.command;
+    if (isReadCommand(cmd)) {
+        Message msg;
+        msg.command = cmd;
+        msg.handleReadCommand(I2C_SOURCE);
+        sendReadCommandResponse(Wire, msg, I2C_SOURCE);
+    }
 }
 
 #endif

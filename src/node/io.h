@@ -1,7 +1,7 @@
 #ifndef io_h
 #define io_h
 
-#include "config.h"
+#include "util/rhtypes.h"
 
 // S >= T
 template<size_t S, size_t T> class Buffer {
@@ -26,14 +26,14 @@ template<size_t S, size_t T> class Buffer {
             size = 0;
         }
         uint8_t read8() {
-            if (index < S) {
+            if (index < size) {
                 return data[index++];
             } else {
                 return 0xFF;
             }
         }
         uint16_t read16() {
-            if (index < S-1) {
+            if (index < size-1) {
                 uint16_t result;
                 result = data[index++];
                 result = (result << 8) | data[index++];
@@ -43,7 +43,7 @@ template<size_t S, size_t T> class Buffer {
             }
         }
         uint32_t read32() {
-            if (index < S-3) {
+            if (index < size-3) {
                 uint32_t result;
                 result = data[index++];
                 result = (result << 8) | data[index++];

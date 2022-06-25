@@ -44,7 +44,7 @@ class CommandsWithRetry:
             if retry_count < max_retries:
                 logger.debug('Retry ({4}) in read_command: addr={0} cmd={1:#04x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
             else:
-                logger.log(log_level, 'Retry ({4}) limit reached in read_command: addr={0} cmd={1:#04x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
+                logger.log(log_level, 'Retry limit reached ({4}) in read_command: addr={0} cmd={1:#04x} size={2} retry={3}'.format(self.addr, command, size, retry_count, msg))
             retry_count += 1
             self.read_error_count += 1
             gevent.sleep(0.025)
@@ -64,7 +64,7 @@ class CommandsWithRetry:
                         data = data[:-1]
                         success = True
                     else:
-                        log_io_error("checksum was {} expected {}".format(actual_checksum, expected_checksum))
+                        log_io_error("checksum was {} expected {}, data was {}".format(actual_checksum, expected_checksum, bytearray(data).hex()))
                 else:
                     log_io_error("bad length {}".format(len(data)) if data else "no data")
             except IOError as err:
@@ -81,7 +81,7 @@ class CommandsWithRetry:
             if retry_count <= max_retries:
                 logger.debug('Retry ({4}) in write_command: addr={0} cmd={1:#04x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
             else:
-                logger.log(log_level, 'Retry ({4}) limit reached in write_command: addr={0} cmd={1:#04x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
+                logger.log(log_level, 'Retry limit reached ({4}) in write_command: addr={0} cmd={1:#04x} data={2} retry={3}'.format(self.addr, command, data, retry_count, msg))
             retry_count += 1
             self.write_error_count += 1
             gevent.sleep(0.025)
@@ -124,6 +124,7 @@ class CommandsWithRetry:
         out_value = None
         while success is False and retry_count <= max_retries:
             write_func(write_command, in_value)
+            gevent.sleep(0.05)  # allow time for command to be actioned
             out_value = read_func(read_command, size)
             if out_value == in_value:
                 success = True

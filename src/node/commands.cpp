@@ -163,8 +163,6 @@ void Message::handleWriteCommand(const CommSource src)
         }
     }
     cmdStatusFlags = statusFlags; // update volatile
-
-    command = INVALID_COMMAND;  // Clear previous command
 }
 
 template <size_t N,size_t T> void ioBufferWriteExtremum(Buffer<N,T>& buf, const Extremum& e, mtime_t now)
@@ -466,8 +464,6 @@ void Message::handleReadCommand(const CommSource src)
     {
         buffer.writeChecksum();
     }
-
-    command = INVALID_COMMAND;  // Clear previous command
 }
 
 void Message::handleReadRssiHistory(RssiNode& rssiNode)
@@ -506,6 +502,7 @@ void Message::handleReadScanHistory(RssiNode& rssiNode)
     }
 }
 
+
 void handleStreamEvent(Stream& stream, Message& msg, const CommSource src)
 {
     const uint8_t nextByte = stream.read();
@@ -514,12 +511,12 @@ void handleStreamEvent(Stream& stream, Message& msg, const CommSource src)
         // new command
         msg.command = (Command) nextByte;
         if (msg.isWriteCommand())
-        {  // Commands > 0x50 are writes TO this slave
-            const int_fast8_t expectedSize = msg.getPayloadSize();
-            if (expectedSize > 0)
+        {
+            const int_fast8_t payloadSize = msg.getPayloadSize();
+            if (payloadSize > 0)
             {
                 msg.buffer.index = 0;
-                msg.buffer.size = expectedSize + 1;  // include checksum byte
+                msg.buffer.size = payloadSize + 1;  // include checksum byte
             }
         }
         else
@@ -548,6 +545,7 @@ void sendReadCommandResponse(Stream& stream, Message& msg, const CommSource src)
         }
         msg.buffer.size = 0;
     }
+    msg.command = INVALID_COMMAND;  // Clear previous command
 }
 
 void validateAndProcessWriteCommand(Message& msg, const CommSource src) {
@@ -563,5 +561,6 @@ void validateAndProcessWriteCommand(Message& msg, const CommSource src) {
             LOG_ERROR("Invalid checksum", checksum, HEX);
         }
         msg.buffer.size = 0;
+        msg.command = INVALID_COMMAND;  // Clear previous command
     }
 }
