@@ -6,7 +6,7 @@ from collections import UserList
 import rh.util.persistent_homology as ph
 from rh.util.RHUtils import FREQUENCY_ID_NONE
 from rh.util import ms_counter
-from .Node import DataStatus, Node, NodeManager
+from .Node import Node, NodeManager
 from rh.sensors import Sensor
 from . import RssiSample, LifetimeSample
 import bisect
@@ -164,54 +164,53 @@ class BaseHardwareInterface:
         if prev_pass_count is None:
             # if None then initialize
             node.pass_count = pass_count
-            node.lap_stats_status = DataStatus.NOT_AVAILABLE
-            node.enter_stats_status = DataStatus.NOT_AVAILABLE
-            node.exit_stats_status = DataStatus.NOT_AVAILABLE
+            node.lap_stats_count = pass_count
+            node.enter_count = pass_count
+            node.exit_count = pass_count
+            node.pending_enter_count = pass_count
+            node.pending_exit_count = pass_count
         elif pass_count != prev_pass_count:
             if pass_count > prev_pass_count:
                 if self.lap_count_change(pass_count, node.pass_count) > 1:
                     logger.warning("Missed pass on node {}!!! (count was {}, now is {})".format(node, node.pass_count, pass_count))
-                if node.enter_stats_status != DataStatus.RETRIEVED:
-                    node.enter_stats_status = DataStatus.AVAILABLE
-                if node.exit_stats_status != DataStatus.RETRIEVED:
-                    node.exit_stats_status = DataStatus.AVAILABLE
-                node.lap_stats_status = DataStatus.AVAILABLE
+                node.pending_enter_count = pass_count
+                node.pending_exit_count = pass_count
             else:
                 logger.warning("Resyncing lap counter for node {}!!! (count was {}, now is {})".format(node, node.pass_count, pass_count))
                 node.pass_count = pass_count
+                node.lap_stats_count = pass_count
+                node.enter_count = pass_count
+                node.exit_count = pass_count
+                node.pending_enter_count = pass_count
+                node.pending_exit_count = pass_count
 
         # if 'crossing' status changed
         if is_crossing != node.is_crossing:
             node.is_crossing = is_crossing
-            if is_crossing:
-                node.enter_stats_status = DataStatus.AVAILABLE
-            else:
-                if node.enter_stats_status != DataStatus.RETRIEVED:
-                    node.enter_stats_status = DataStatus.AVAILABLE
-                node.exit_stats_status = DataStatus.AVAILABLE
+            if pass_count == prev_pass_count:
+                if is_crossing:
+                    node.pending_enter_count = pass_count + 1
+                else:
+                    node.pending_exit_count = pass_count + 1
 
         self._notify_rssi_sample(node, timestamp, rssi)
 
-        has_new_lap = (node.lap_stats_status == DataStatus.AVAILABLE)
-        has_entered = (node.enter_stats_status == DataStatus.AVAILABLE)
-        has_exited = (node.exit_stats_status == DataStatus.AVAILABLE)
+        has_new_lap = node.lap_stats_count < pass_count
+        has_entered = node.enter_count < node.pending_enter_count
+        has_exited = node.exit_count < node.pending_exit_count
         return has_new_lap, has_entered, has_exited
 
     def process_crossing(self, node, is_crossing, trigger_count, trigger_timestamp: int, trigger_rssi: int, trigger_lifetime: int):
         '''Parameter order must match order in packet'''
         logger.debug("{}: node={}, trigger_count={}, trigger_timestamp={}, trigger_rssi={}, trigger_lifetime={}".format("ENTER" if is_crossing else "EXIT", node, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime))
         if is_crossing:
-            if self.lap_count_change(trigger_count, node.pass_count) > 1:
-                logger.warning("Missed enter on node {}!!! (count was {}, now is {})".format(node, node.pass_count, trigger_count))
-                node.enter_stats_status = DataStatus.NOT_AVAILABLE
-            else:
-                node.enter_stats_status = DataStatus.RETRIEVED
+            if node.enter_count is not None and self.lap_count_change(trigger_count, node.enter_count) > 1:
+                logger.warning("Missed enter on node {}!!! (count was {}, now is {})".format(node, node.enter_count, trigger_count))
+            node.enter_count = trigger_count
         else:
-            if self.lap_count_change(trigger_count, node.pass_count) > 1:
-                logger.warning("Missed exit on node {}!!! (count was {}, now is {})".format(node, node.pass_count, trigger_count))
-                node.exit_stats_status = DataStatus.NOT_AVAILABLE
-            else:
-                node.exit_stats_status = DataStatus.RETRIEVED
+            if node.exit_count is not None and self.lap_count_change(trigger_count, node.exit_count) > 1:
+                logger.warning("Missed exit on node {}!!! (count was {}, now is {})".format(node, node.exit_count, trigger_count))
+            node.exit_count = trigger_count
 
         # NB: crossing race times are relative to the race start time
         crossing_race_time = trigger_timestamp - self.race_start_time_ms
@@ -232,20 +231,18 @@ class BaseHardwareInterface:
         if self.lap_count_change(pass_count, node.pass_count) != 1:
             logger.warning("Missed pass on node {}!!! (count was {}, now is {})".format(node, node.pass_count, pass_count))
         node.pass_count = pass_count
+        node.lap_stats_count = pass_count
         if pass_peak_rssi is not None:
             node.pass_peak_rssi = pass_peak_rssi
         if pass_nadir_rssi is not None:
             node.pass_nadir_rssi = pass_nadir_rssi
-        if node.enter_stats_status == DataStatus.RETRIEVED and node.enter_at_sample.timestamp > pass_timestamp:
+        if node.enter_count == node.pass_count and node.enter_at_sample.timestamp > pass_timestamp:
             logger.warning("Node {}: Enter timestamp {} is after pass timestamp {}!!! ".format(node, node.enter_at_sample.timestamp, pass_timestamp))
-        if node.exit_stats_status == DataStatus.RETRIEVED and node.exit_at_sample.timestamp < pass_timestamp:
+        if node.exit_count == node.pass_count and node.exit_at_sample.timestamp < pass_timestamp:
             logger.warning("Node {}: Exit timestamp {} is before pass timestamp {}!!! ".format(node, node.exit_at_sample.timestamp, pass_timestamp))
         node.is_crossing = False
         node.enter_at_sample = None
         node.exit_at_sample = None
-        node.lap_stats_status = DataStatus.NOT_AVAILABLE
-        node.enter_stats_status = DataStatus.NOT_AVAILABLE
-        node.exit_stats_status = DataStatus.NOT_AVAILABLE
 
         # NB: lap race times are relative to the race start time
         lap_race_time_ms = pass_timestamp - self.race_start_time_ms

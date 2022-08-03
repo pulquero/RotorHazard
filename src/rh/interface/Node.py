@@ -4,7 +4,6 @@ Command agnostic behaviour only.
 '''
 
 import logging
-from enum import IntEnum
 import gevent.lock
 from typing import List, Optional
 from rh.util import ms_counter
@@ -14,12 +13,6 @@ from . import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32, \
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
 
 logger = logging.getLogger(__name__)
-
-
-class DataStatus(IntEnum):
-    NOT_AVAILABLE = 0
-    AVAILABLE = 1
-    RETRIEVED = 2
 
 
 class CommandsWithRetry:
@@ -258,9 +251,11 @@ class Node(CommandsWithRetry):
         self.is_crossing = False
         self.enter_at_sample: Optional[RssiSample] = None
         self.exit_at_sample: Optional[RssiSample] = None
-        self.lap_stats_status = DataStatus.NOT_AVAILABLE
-        self.enter_stats_status = DataStatus.NOT_AVAILABLE
-        self.exit_stats_status = DataStatus.NOT_AVAILABLE
+        self.lap_stats_count = None
+        self.enter_count = None
+        self.exit_count = None
+        self.pending_enter_count = None
+        self.pending_exit_count = None
         self.under_min_lap_count = 0
         self._loop_time = 0  # microseconds
 
