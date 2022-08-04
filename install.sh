@@ -14,6 +14,7 @@ sudo apt upgrade -y
 # Python packages
 cd src
 sudo apt install -y libatlas-base-dev
+python3 -m pip install --upgrade pip
 python3 -m pip install --upgrade -r requirements.txt
 cd ..
 
