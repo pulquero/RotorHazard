@@ -115,7 +115,7 @@ class LapRFInterface(BaseHardwareInterface):
         addr_streams = ensure_iter(addr_streams)
         for addr_stream in addr_streams:
             node_manager = LapRFNodeManager(*addr_stream)
-            self.node_manager.append(node_manager)
+            self.node_managers.append(node_manager)
 
         for node_manager in self.node_managers:
             with node_manager:
