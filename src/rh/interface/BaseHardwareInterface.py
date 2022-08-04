@@ -117,7 +117,7 @@ class BaseHardwareInterface:
     def _notify_exit_triggered(self, node, trigger_ts: int, trigger_rssi: int, trigger_lifetime: int):
         self.listener.on_exit_triggered(node, trigger_ts, trigger_rssi, trigger_lifetime)
 
-    def _notify_pass(self, node, lap_ts_ms: int, lap_source, pass_rssi: int):
+    def _notify_pass(self, node, lap_ts_ms: int, lap_source, pass_rssi: Optional[int]):
         self.listener.on_pass(node, lap_ts_ms, lap_source, pass_rssi)
 
     def _notify_extremum_history(self, node, extremum_timestamp, extremum_rssi, extremum_duration):

@@ -5091,7 +5091,7 @@ def initialize_hardware_interface():
         if 'RH_INTERFACE' in os.environ:
             rh_interface_name = interface_pkg.__name__ + '.' + os.environ.get('RH_INTERFACE') + "Interface"
         elif 'ADDRESS' in rhconfig.LAPRF and rhconfig.LAPRF['ADDRESS']:
-            rh_interface_name = interface_pkg.__name__ + '..LapRFInterface'
+            rh_interface_name = interface_pkg.__name__ + '.LapRFInterface'
         elif 'HARDWARE_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['HARDWARE_PORT']:
             rh_interface_name = interface_pkg.__name__ + '.ChorusInterface'
         else:
