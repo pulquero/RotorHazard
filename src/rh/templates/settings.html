@@ -1131,6 +1131,7 @@
 				selected = selectbox.val();
 				selectbox.empty();
 
+				selectbox.append('<option value="0">None</option>');
 				for (var i in msg.pilots) {
 					selectbox.append('<option value="'+ msg.pilots[i].pilot_id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>');
 				}
