@@ -59,13 +59,6 @@ jobs:
         mypy --cobertura-xml mypy-report --install-types --non-interactive -p rh
         cd ..
 
-    - name: Python tests
-      run: |
-        cd src
-        coverage run --branch -m unittest discover -v
-        coverage xml -o test-reports/coverage.xml
-        cd ..
-
     - name: Install Arduino CI
       uses: ruby/setup-ruby@v1
       with:
@@ -84,6 +77,13 @@ jobs:
       uses: actions/setup-node@v2
       with:
         node-version: '16'
+
+    - name: Python tests
+      run: |
+        cd src
+        coverage run --branch -m unittest discover -v
+        coverage xml -o test-reports/coverage.xml
+        cd ..
 
     - name: Build UI
       run: |
@@ -129,7 +129,7 @@ jobs:
             opts: "--additional-urls https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json"
           - board: "esp32:esp32:esp32:PSRAM=disabled,PartitionScheme=default,CPUFreq=240,FlashMode=qio,FlashFreq=80,FlashSize=4M,UploadSpeed=921600,DebugLevel=none"
             platform: "esp32:esp32"
-            opts: "--additional-urls https://dl.espressif.com/dl/package_esp32_index.json"
+            opts: "--additional-urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
             flags: "-DUSE_WIFI -DUSE_MQTT -DUSE_NTP"
           - board: "esp8266:esp8266:generic:xtal=80,vt=flash,exception=disabled,stacksmash=disabled,ssl=all,mmu=3232,non32xfer=fast,ResetMethod=nodemcu,CrystalFreq=26,FlashFreq=40,FlashMode=dout,eesz=1M64,led=2,sdk=nonosdk_190703,ip=lm2f,dbg=Disabled,lvl=None____,wipe=none,baud=115200"
             platform: "esp8266:esp8266"

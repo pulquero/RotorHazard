@@ -7,34 +7,11 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO
 import webbrowser
 
-from rh.app.config import Config
-from rh.interface import RHInterface, MockInterface
+from . import get_interface
+from rh.interface import RHInterface
 
 def scan(port, socket):
-    if port == 'MOCK':
-        INTERFACE = MockInterface.get_hardware_interface()
-    elif port.startswith('COM') or port.startswith('/dev/'):
-        config = Config()
-        config.SERIAL_PORTS = [port]
-        INTERFACE = RHInterface.get_hardware_interface(config=config)
-    elif port.startswith('i2c:'):
-        from rh.helpers import parse_i2c_url
-        from rh.helpers.i2c_helper import I2CBus
-
-        bus_addr = parse_i2c_url(port)
-        params = {}
-        params['idxOffset'] = 0
-        params['i2c_helper'] = [I2CBus(bus_addr[0])]
-        params['i2c_addrs'] = [bus_addr[1]]
-        INTERFACE = RHInterface.get_hardware_interface(**params)
-    elif port.startswith(':'):
-        config = Config()
-        config.SOCKET_PORTS = [int(port[1:])]
-        INTERFACE = RHInterface.get_hardware_interface(config=config)
-    else:
-        print("Invalid port: {}".format(port))
-        exit(1)
-    print("Nodes detected: {}".format(len(INTERFACE.nodes)))
+    INTERFACE = get_interface(port)
     
     for node in INTERFACE.nodes:
         INTERFACE.set_mode(node.index, RHInterface.SCANNER_MODE)
@@ -52,7 +29,7 @@ def scan(port, socket):
     return INTERFACE
 
 def start(com_port, web_port = 5080):
-    APP = Flask(__name__, template_folder='../server/templates', static_folder='../server/static',static_url_path='/static')
+    APP = Flask(__name__, template_folder='../templates', static_folder='../static',static_url_path='/static')
     SOCKET_IO = SocketIO(APP, async_mode='gevent', cors_allowed_origins='*')
     INTERFACE = scan(com_port, SOCKET_IO)
     

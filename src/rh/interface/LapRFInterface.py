@@ -81,6 +81,8 @@ class LapRFNode(Node):
     def __init__(self, index, multi_node_index, manager):
         super().__init__(index=index, multi_node_index=multi_node_index, manager=manager)
         self.is_configured = False
+        self._threshold: float = 0
+        self.gain: int = 0
         self.history_filter = ExtremumFilter()
         self.pass_count = 0
 
@@ -115,7 +117,7 @@ class LapRFInterface(BaseHardwareInterface):
         addr_streams = ensure_iter(addr_streams)
         for addr_stream in addr_streams:
             node_manager = LapRFNodeManager(*addr_stream)
-            self.node_manager.append(node_manager)
+            self.node_managers.append(node_manager)
 
         for node_manager in self.node_managers:
             with node_manager:
@@ -160,8 +162,9 @@ class LapRFInterface(BaseHardwareInterface):
             for record in records:
                 self._process_message(node_manager, record)
 
-    def _process_message(self, node_manager, record):
+    def _process_message(self, node_manager, record: laprf.Event):
         if isinstance(record, laprf.StatusEvent):
+            assert record.battery_voltage is not None
             node_manager.voltage = millivolts_to_volts(record.battery_voltage)
             rssi_ts_ms = ms_counter()
             for idx, rssi in enumerate(record.last_rssi):
@@ -173,6 +176,8 @@ class LapRFInterface(BaseHardwareInterface):
                     filtered_ts_ms, filtered_rssi = node.history_filter.filter(rssi_ts_ms, rssi)
                     self.append_history(node, filtered_ts_ms, filtered_rssi)
         elif isinstance(record, laprf.PassingEvent):
+            assert record.slot_index is not None and record.slot_index > 0
+            assert record.rtc_time is not None
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]
             pass_peak_rssi = record.peak_height
@@ -183,6 +188,7 @@ class LapRFInterface(BaseHardwareInterface):
             node.pass_count += 1
             self._notify_pass(node, lap_ts_ms, BaseHardwareInterface.LAP_SOURCE_REALTIME, None)
         elif isinstance(record, laprf.RFSetupEvent):
+            assert record.slot_index is not None and record.slot_index > 0
             node_idx = record.slot_index - 1
             node = node_manager.nodes[node_idx]
             node.band_idx = record.band
@@ -191,8 +197,8 @@ class LapRFInterface(BaseHardwareInterface):
             old_bandChannel = node.bandChannel
             if record.enabled:
                 node.frequency = record.frequency
-                if record.band_idx >= 1 and record.band_idx <= len(laprf.LIVE_TIME_BANDS) and record.channel_idx >= 1 and record.channel_idx <= laprf.MAX_CHANNELS:
-                    node.bandChannel = laprf.LIVE_TIME_BANDS[record.band_idx-1] + str(record.channel_idx)
+                if record.band is not None and record.band >= 1 and record.band <= len(laprf.LIVE_TIME_BANDS) and record.channel is not None and record.channel >= 1 and record.channel <= laprf.MAX_CHANNELS:
+                    node.bandChannel = laprf.LIVE_TIME_BANDS[record.band-1] + str(record.channel)
                 else:
                     node.bandChannel = None
             else:
@@ -206,12 +212,13 @@ class LapRFInterface(BaseHardwareInterface):
             if node.frequency != old_frequency:
                 self._notify_frequency_changed(node)
             if node.bandChannel != old_bandChannel:
-                self._notify_bandChannel_changed(node)
+                self._notify_frequency_changed(node)
             if node.threshold != old_threshold:
                 self._notify_threshold_changed(node)
             if node.gain != old_gain:
                 self._notify_gain_changed(node)
         elif isinstance(record, laprf.TimeEvent):
+            assert record.rtc_time is not None
             if node_manager.race_start_time_request_ts_ms is not None:
                 server_oneway_ms = round((ms_counter() - node_manager.race_start_time_request_ts_ms)/2)
                 node_manager.race_start_rtc_time_ms = micros_to_millis(record.rtc_time) - server_oneway_ms
@@ -261,7 +268,7 @@ class LapRFInterface(BaseHardwareInterface):
         node_manager.write(laprf.encode_set_rf_setup_record(slot_index, enabled, band_idx, channel_idx, frequency if frequency else 0, gain, threshold))
         node.is_configured = False
         node_manager.write(laprf.encode_get_rf_setup_record(slot_index))
-        self._wait_for_configuration(node)
+        self._wait_for_configuration(node, node_manager)
         if not node.is_configured:
             logger.error("LapRF did not respond with RF setup information for node {}".format(node))
         if node.frequency != frequency:

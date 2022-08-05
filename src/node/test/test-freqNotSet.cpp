@@ -12,18 +12,18 @@ unittest(freqNotSet) {
   History& history = rssiNode.getHistory();
 
   rssiNode.active = false;
-  rssiRxs.start(millis(), usclock);
+  rssiRxs.start(usclock);
 
   readRssi(nano, 43);
   assertFalse(rssiNode.isStateValid());
   readRssi(nano, 43);
   assertEqual(2*N_2*1000-1000, state.lastloopMicros);
   assertFalse(rssiNode.isStateValid());
-  assertEqual(0, (int)state.rssi);
+  assertEqual(INVALID_RSSI, (int)state.rssi);
   assertEqual(0, (int)state.rssiTimestamp);
   assertEqual(0, (int)state.lastRssi);
   assertEqual(0, (int)state.nodeRssiPeak);
-  assertEqual(255, (int)state.nodeRssiNadir);
+  assertEqual(MAX_RSSI, (int)state.nodeRssiNadir);
 
   rssiNode.active = true;
 
@@ -32,7 +32,7 @@ unittest(freqNotSet) {
   readRssi(nano, 43);
   assertTrue(rssiNode.isStateValid());
   assertEqual(43, (int)state.rssi);
-  assertEqual(timestamp(5), (int)state.rssiTimestamp);
+  assertEqual(timestamp(5)-1, (int)state.rssiTimestamp);
   assertEqual(43, (int)state.lastRssi);
   assertEqual(43, (int)state.nodeRssiPeak);
   assertEqual(43, (int)state.nodeRssiNadir);

@@ -2,8 +2,8 @@
 
 RELEASE_VERSION = "3.1.2-dev.1"  # Public release version code
 SERVER_API = 32+8  # Server API version
-NODE_API_SUPPORTED = 36  # Minimum supported node version
-NODE_API_BEST = 36  # Most recent node API
+NODE_API_SUPPORTED = 37  # Minimum supported node version
+NODE_API_BEST = 37  # Most recent node API
 JSON_API = 3  # JSON API version
 
 # This must be the first import for the time being. It is
@@ -192,7 +192,7 @@ server_ipaddress_str = None
 ShutdownButtonInputHandler = None
 Server_secondary_mode = None
 
-RACE = RHRace.RHRace() # For storing race management variables
+RACE = RHRace.RHRace()  # For storing race management variables
 LAST_RACE: Optional[RHRace.RHRace] = None
 SECONDARY_RACE_FORMAT: Optional['RHRaceFormat'] = None
 RESULTS_CACHE = Results.ResultsCache()
@@ -208,8 +208,8 @@ def __web(text):
     return LANGUAGE.__(text, lang)
 
 __sys = LANGUAGE.__
-__ = __web # Shortcut to translation function
-RHDATA.late_init(PAGE_CACHE, LANGUAGE) # Give RHDATA additional references
+__ = __web  # Shortcut to translation function
+RHDATA.late_init(PAGE_CACHE, LANGUAGE)  # Give RHDATA additional references
 
 APP.rhserver = vars()
 
@@ -1015,7 +1015,7 @@ def on_set_frequency(data):
         modified = True
 
     if modified:
-        logger.info('Frequency set: Node {0} B:{1} Ch:{2} Freq:{3}'.format(node_index+1, band, channel, frequency))
+        logger.info('Frequency set: Profile {} Node {} B:{} Ch:{} Freq:{}'.format(profile.id, node_index+1, band, channel, frequency))
 
         RHDATA.alter_profile({
             'profile_id': profile.id,
@@ -3207,11 +3207,11 @@ def emit_frequency_data(**params):
 def emit_node_data(**params):
     '''Emits node data.'''
     emit_payload = {
-            'node_peak_rssi': [node.node_peak_rssi for node in INTERFACE.nodes],
-            'node_nadir_rssi': [node.node_nadir_rssi for node in INTERFACE.nodes],
-            'pass_peak_rssi': [node.pass_peak_rssi for node in INTERFACE.nodes],
-            'pass_nadir_rssi': [node.pass_nadir_rssi for node in INTERFACE.nodes],
-            'debug_pass_count': [node.debug_pass_count for node in INTERFACE.nodes]
+            'node_peak_rssi': [node.node_peak_rssi if node.node_peak_rssi >= node.node_nadir_rssi else '' for node in INTERFACE.nodes],
+            'node_nadir_rssi': [node.node_nadir_rssi if node.node_peak_rssi >= node.node_nadir_rssi else '' for node in INTERFACE.nodes],
+            'pass_peak_rssi': [node.pass_peak_rssi if node.pass_peak_rssi >= node.pass_nadir_rssi else '' for node in INTERFACE.nodes],
+            'pass_nadir_rssi': [node.pass_nadir_rssi if node.pass_peak_rssi >= node.pass_nadir_rssi else '' for node in INTERFACE.nodes],
+            'pass_count': [node.pass_count for node in INTERFACE.nodes]
         }
     if ('nobroadcast' in params):
         emit('node_data', emit_payload)
@@ -4404,7 +4404,6 @@ def pass_record_callback(node, lap_race_time_ms: int, source):
         logger.debug('Raw pass record: node: {0}, lap timestamp: {1} (enter: {3}, exit: {4}, duration: {5}), source: {2}' \
                      .format(node.index+1, lap_race_time_ms, source, enter_fmtstr, exit_fmtstr, duration_fmtstr))
     node.pass_crossing_flag = False  # clear the "synchronized" version of the crossing flag
-    node.debug_pass_count += 1
     emit_node_data() # For updated triggers and peaks
 
     location_id, seat = get_local_location_id_and_seat(node)
@@ -5092,7 +5091,7 @@ def initialize_hardware_interface():
         if 'RH_INTERFACE' in os.environ:
             rh_interface_name = interface_pkg.__name__ + '.' + os.environ.get('RH_INTERFACE') + "Interface"
         elif 'ADDRESS' in rhconfig.LAPRF and rhconfig.LAPRF['ADDRESS']:
-            rh_interface_name = interface_pkg.__name__ + '..LapRFInterface'
+            rh_interface_name = interface_pkg.__name__ + '.LapRFInterface'
         elif 'HARDWARE_PORT' in rhconfig.CHORUS and rhconfig.CHORUS['HARDWARE_PORT']:
             rh_interface_name = interface_pkg.__name__ + '.ChorusInterface'
         else:

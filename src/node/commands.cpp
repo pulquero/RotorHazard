@@ -12,16 +12,27 @@ constexpr uint_fast8_t SCAN_HISTORY_PAYLOAD_SIZE = SCAN_HISTORY_PAYLOAD_COUNT*si
 uint8_t volatile cmdStatusFlags = NO_STATUS;
 uint_fast8_t volatile cmdRssiNodeIndex = 0;
 
-inline void setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
+void setFrequency(RssiNode& rssiNode, RxModule& rx, freq_t freq) {
+    Settings& settings = rssiNode.getSettings();
     if (freq == POWER_OFF_FREQ) {
         rx.powerDown();
+        settings.vtxFreq = POWER_OFF_FREQ;
         rssiNode.active = false;
-    } else if (freq > 0) {
+    } else {
         if (rx.isPoweredDown()) {
             rx.reset();  // reset and power-up
         }
         rx.setFrequency(freq);
-        rssiNode.active = true;
+        freq_t actualFreq = rx.getFrequency();
+        if (actualFreq == canonicalFrequency(freq)) {
+            settings.vtxFreq = freq;
+            rssiNode.resetState(usclock.millis());
+            rssiNode.active = true;
+        } else {
+            LOG_ERROR("Failed to set vrx frequency, currently is ", actualFreq, DEC);
+            settings.vtxFreq = ERR_FREQ;
+            rssiNode.active = false;
+        }
     }
 }
 
@@ -53,7 +64,7 @@ int_fast8_t Message::getPayloadSize() const
 }
 
 // Generic IO write command handler
-void Message::handleWriteCommand(CommSource src)
+void Message::handleWriteCommand(const CommSource src)
 {
     buffer.flipForRead();
     bool activityFlag = true;
@@ -64,18 +75,11 @@ void Message::handleWriteCommand(CommSource src)
         case WRITE_FREQUENCY:
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-                freq_t freq = buffer.read16();
+                const freq_t freq = buffer.read16();
                 if ((freq >= MIN_FREQ && freq <= MAX_FREQ) || (freq == POWER_OFF_FREQ))
                 {
                     RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                     Settings& settings = rssiNode.getSettings();
-                    if (freq != settings.vtxFreq)
-                    {
-                        settings.vtxFreq = freq;
-                        hardware.storeFrequency(freq);
-                        rssiNode.resetState(usclock.millis());  // restart rssi peak tracking for node
-                    }
-
                     RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
                     setFrequency(rssiNode, rx, freq);
                 }
@@ -85,7 +89,7 @@ void Message::handleWriteCommand(CommSource src)
         case WRITE_MODE:
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-                uint8_t mode = buffer.read8();
+                const uint8_t mode = buffer.read8();
                 setMode((Mode)mode);
             }
             break;
@@ -93,34 +97,26 @@ void Message::handleWriteCommand(CommSource src)
         case WRITE_ENTER_AT_LEVEL:  // lap pass begins when RSSI is at or above this level
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-                rssi_t rssiVal = ioBufferReadRssi(buffer);
+                const rssi_t rssiVal = ioBufferReadRssi(buffer);
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                 Settings& settings = rssiNode.getSettings();
-                if (rssiVal != settings.enterAtLevel)
-                {
-                    settings.enterAtLevel = rssiVal;
-                    hardware.storeEnterAtLevel(settings.enterAtLevel);
-                }
+                settings.enterAtLevel = rssiVal;
             }
             break;
 
         case WRITE_EXIT_AT_LEVEL:  // lap pass ends when RSSI goes below this level
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
-                rssi_t rssiVal = ioBufferReadRssi(buffer);
+                const rssi_t rssiVal = ioBufferReadRssi(buffer);
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
                 Settings& settings = rssiNode.getSettings();
-                if (rssiVal != settings.exitAtLevel)
-                {
-                    settings.exitAtLevel = rssiVal;
-                    hardware.storeExitAtLevel(settings.exitAtLevel);
-                }
+                settings.exitAtLevel = rssiVal;
             }
             break;
 
         case WRITE_CURNODE_INDEX:  // index of current node for this processor
             {
-                uint8_t idx = buffer.read8();
+                const uint8_t idx = buffer.read8();
                 if (idx < rssiRxs.getCount()) {
                     cmdRssiNodeIndex = idx;
                 }
@@ -129,7 +125,7 @@ void Message::handleWriteCommand(CommSource src)
 
         case SEND_STATUS_MESSAGE:  // status message sent from server to node
             {
-                uint16_t msg = buffer.read16();  // upper byte is message type, lower byte is data
+                const uint16_t msg = buffer.read16();  // upper byte is message type, lower byte is data
                 handleStatusMessage((uint8_t)(msg >> 8), (uint8_t)(msg & 0x00FF));
             }
             break;
@@ -144,7 +140,7 @@ void Message::handleWriteCommand(CommSource src)
 
         case RESET_PAIRED_NODE:  // reset paired node for ISP
             {
-                uint8_t pinState = buffer.read8();
+                const uint8_t pinState = buffer.read8();
                 hardware.resetPairedNode(pinState);
             }
             break;
@@ -167,8 +163,6 @@ void Message::handleWriteCommand(CommSource src)
         }
     }
     cmdStatusFlags = statusFlags; // update volatile
-
-    command = INVALID_COMMAND;  // Clear previous command
 }
 
 template <size_t N,size_t T> void ioBufferWriteExtremum(Buffer<N,T>& buf, const Extremum& e, mtime_t now)
@@ -178,31 +172,34 @@ template <size_t N,size_t T> void ioBufferWriteExtremum(Buffer<N,T>& buf, const 
     buf.write16(e.duration);
 }
 
-void Message::setMode(Mode mode) const
+void Message::setMode(const Mode mode) const
 {
     RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
     Settings& settings = rssiNode.getSettings();
     switch (mode) {
         case TIMER:
             rssiNode.setFilter(&(rssiNode.defaultFilter));
+            rssiNode.resetState(usclock.millis());
             settings.mode = mode;
             break;
         case SCANNER:
 #ifdef SCAN_HISTORY
             rssiNode.scanHistory.clear();
             rssiNode.setFilter(&(rssiNode.medianFilter));
-            settings.vtxFreq = MIN_SCAN_FREQ;
             {
                 RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
-                setFrequency(rssiNode, rx, settings.vtxFreq);
+                setFrequency(rssiNode, rx, MIN_SCAN_FREQ);
+                if (rssiNode.active) {
+                    settings.mode = mode;
+                }
             }
-            settings.mode = mode;
 #endif
             break;
         case RAW:
 #ifdef RSSI_HISTORY
             rssiNode.rssiHistory.clear();
             rssiNode.setFilter(&(rssiNode.noFilter));
+            rssiNode.resetState(usclock.millis());
             settings.mode = mode;
 #endif
             break;
@@ -211,7 +208,7 @@ void Message::setMode(Mode mode) const
 }
 
 // Generic IO read command handler
-void Message::handleReadCommand(CommSource src)
+void Message::handleReadCommand(const CommSource src)
 {
     buffer.flipForWrite();
     bool activityFlag = true;
@@ -227,7 +224,7 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                Settings& settings = rssiNode.getSettings();
+                const Settings& settings = rssiNode.getSettings();
                 buffer.write16(settings.vtxFreq);
             } else {
                 buffer.write16(0xFFFF);
@@ -238,10 +235,21 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                Settings& settings = rssiNode.getSettings();
+                const Settings& settings = rssiNode.getSettings();
                 buffer.write8(settings.mode);
             } else {
                 buffer.write8(0xFF);
+            }
+            break;
+
+        case READ_ADC:
+            if (cmdRssiNodeIndex < rssiRxs.getCount())
+            {
+                RxModule& rx = rssiRxs.getRxModule(cmdRssiNodeIndex);
+                uint16_t val = analogRead(rx.getRssiPin());
+                buffer.write16(val);
+            } else {
+                buffer.write16(0xFF);
             }
             break;
 
@@ -249,14 +257,14 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                State& state = rssiNode.getState();
-                LastPass& lastPass = rssiNode.getLastPass();
+                const State& state = rssiNode.getState();
+                const LastPass& lastPass = rssiNode.getLastPass();
                 ioBufferWriteRssi(buffer, state.rssi);
                 buffer.write8(lastPass.lap);
                 buffer.write8(rssiNode.isCrossing());
                 statusFlags |= POLLING;
             } else {
-                ioBufferWriteRssi(buffer, 0);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
                 buffer.write8(0);
                 buffer.write8(0xFF);
             }
@@ -266,12 +274,12 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                State& state = rssiNode.getState();
+                const State& state = rssiNode.getState();
                 ioBufferWriteRssi(buffer, state.nodeRssiPeak);
                 ioBufferWriteRssi(buffer, state.nodeRssiNadir);
             } else {
-                ioBufferWriteRssi(buffer, 0);
-                ioBufferWriteRssi(buffer, MAX_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
             }
             break;
 
@@ -279,8 +287,8 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                LastPass& lastPass = rssiNode.getLastPass();
-                mtime_t timeNowVal = usclock.millis();
+                const LastPass& lastPass = rssiNode.getLastPass();
+                const mtime_t timeNowVal = usclock.millis();
                 buffer.write8(lastPass.lap);
                 buffer.write16(toDuration(timeNowVal - lastPass.timestamp));  // ms since lap
                 ioBufferWriteRssi(buffer, lastPass.rssiPeak);
@@ -288,8 +296,8 @@ void Message::handleReadCommand(CommSource src)
             } else {
                 buffer.write8(0);
                 buffer.write16(0xFFFF);
-                ioBufferWriteRssi(buffer, 0);
-                ioBufferWriteRssi(buffer, MAX_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
             }
             break;
 
@@ -297,8 +305,8 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                LastTrigger& lastEnter = rssiNode.getLastEnter();
-                mtime_t timeNowVal = usclock.millis();
+                const LastTrigger& lastEnter = rssiNode.getLastEnter();
+                const mtime_t timeNowVal = usclock.millis();
                 buffer.write8(lastEnter.lap);
                 buffer.write16(toDuration(timeNowVal - lastEnter.timestamp));  // ms since enter
                 ioBufferWriteRssi(buffer, lastEnter.rssi);
@@ -306,7 +314,7 @@ void Message::handleReadCommand(CommSource src)
             } else {
                 buffer.write8(0);
                 buffer.write16(0xFFFF);
-                ioBufferWriteRssi(buffer, 0);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
                 buffer.write8(0);
             }
             break;
@@ -315,8 +323,8 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                LastTrigger& lastExit = rssiNode.getLastExit();
-                mtime_t timeNowVal = usclock.millis();
+                const LastTrigger& lastExit = rssiNode.getLastExit();
+                const mtime_t timeNowVal = usclock.millis();
                 buffer.write8(lastExit.lap);
                 buffer.write16(toDuration(timeNowVal - lastExit.timestamp));  // ms since exit
                 ioBufferWriteRssi(buffer, lastExit.rssi);
@@ -324,7 +332,7 @@ void Message::handleReadCommand(CommSource src)
             } else {
                 buffer.write8(0);
                 buffer.write16(0xFFFF);
-                ioBufferWriteRssi(buffer, 0);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
                 buffer.write8(0);
             }
             break;
@@ -333,25 +341,24 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                State& state = rssiNode.getState();
+                const State& state = rssiNode.getState();
                 History& history = rssiNode.getHistory();
                 buffer.write8(state.lifetime);  // NB: signed
                 buffer.write16(toDuration(state.loopTimeMicros));
-                ExtremumType extremumType = history.nextToSendType();
+                const ExtremumType extremumType = history.nextToSendType();
                 if (extremumType != NONE) {
-                    Extremum extremum = history.popNextToSend();
-                    mtime_t timeNowVal = usclock.millis();
+                    const Extremum extremum = history.popNextToSend();
+                    const mtime_t timeNowVal = usclock.millis();
                     ioBufferWriteExtremum(buffer, extremum, timeNowVal);
                 } else {
-                    ioBufferWriteRssi(buffer, 0);
+                    ioBufferWriteRssi(buffer, INVALID_RSSI);
                     buffer.write16(0);
                     buffer.write16(0);
                 }
             } else {
                 buffer.write8(0);
                 buffer.write16(0);
-                buffer.write8(0);
-                ioBufferWriteRssi(buffer, 0);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
                 buffer.write16(0);
                 buffer.write16(0);
             }
@@ -361,10 +368,10 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                Settings& settings = rssiNode.getSettings();
+                const Settings& settings = rssiNode.getSettings();
                 ioBufferWriteRssi(buffer, settings.enterAtLevel);
             } else {
-                ioBufferWriteRssi(buffer, MAX_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
             }
             break;
 
@@ -372,10 +379,10 @@ void Message::handleReadCommand(CommSource src)
             if (cmdRssiNodeIndex < rssiRxs.getCount())
             {
                 RssiNode& rssiNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-                Settings& settings = rssiNode.getSettings();
+                const Settings& settings = rssiNode.getSettings();
                 ioBufferWriteRssi(buffer, settings.exitAtLevel);
             } else {
-                ioBufferWriteRssi(buffer, MAX_RSSI);
+                ioBufferWriteRssi(buffer, INVALID_RSSI);
             }
             break;
 
@@ -422,15 +429,6 @@ void Message::handleReadCommand(CommSource src)
             }
             break;
 
-        case READ_NODE_SLOTIDX:
-            if (cmdRssiNodeIndex < rssiRxs.getCount())
-            {
-                buffer.write8(rssiRxs.getSlotIndex(cmdRssiNodeIndex));
-            } else {
-                buffer.write8(0xFF);
-            }
-            break;
-
         case READ_FW_VERSION:
             buffer.writeText(FIRMWARE_VERSION);
             break;
@@ -466,8 +464,6 @@ void Message::handleReadCommand(CommSource src)
     {
         buffer.writeChecksum();
     }
-
-    command = INVALID_COMMAND;  // Clear previous command
 }
 
 void Message::handleReadRssiHistory(RssiNode& rssiNode)
@@ -480,13 +476,13 @@ void Message::handleReadRssiHistory(RssiNode& rssiNode)
         ioBufferWriteRssi(buffer, rssiHistory.shift());
     }
     if (i<RSSI_HISTORY_PAYLOAD_SIZE && rssiNode.rssiHistoryComplete) {
-        ioBufferWriteRssi(buffer, MAX_RSSI);
+        ioBufferWriteRssi(buffer, INVALID_RSSI);
         i++;
         rssiNode.rssiHistoryComplete = false;
     }
 #endif
     for (; i<RSSI_HISTORY_PAYLOAD_SIZE; i++) {
-        ioBufferWriteRssi(buffer, 0);
+        ioBufferWriteRssi(buffer, INVALID_RSSI);
     }
 }
 
@@ -500,26 +496,27 @@ void Message::handleReadScanHistory(RssiNode& rssiNode)
         ioBufferWriteFreqRssi(buffer, scanHistory.shift());
     }
 #endif
-    const FreqRssi f_r = {0, 0};
+    const FreqRssi f_r = {0, INVALID_RSSI};
     for (; i<SCAN_HISTORY_PAYLOAD_COUNT; i++) {
         ioBufferWriteFreqRssi(buffer, f_r);
     }
 }
 
-void handleStreamEvent(Stream& stream, Message& msg, CommSource src)
+
+void handleStreamEvent(Stream& stream, Message& msg, const CommSource src)
 {
-    uint8_t nextByte = stream.read();
+    const uint8_t nextByte = stream.read();
     if (msg.buffer.size == 0)
     {
         // new command
         msg.command = (Command) nextByte;
         if (msg.isWriteCommand())
-        {  // Commands > 0x50 are writes TO this slave
-            int_fast8_t expectedSize = msg.getPayloadSize();
-            if (expectedSize > 0)
+        {
+            const int_fast8_t payloadSize = msg.getPayloadSize();
+            if (payloadSize > 0)
             {
                 msg.buffer.index = 0;
-                msg.buffer.size = expectedSize + 1;  // include checksum byte
+                msg.buffer.size = payloadSize + 1;  // include checksum byte
             }
         }
         else
@@ -536,7 +533,7 @@ void handleStreamEvent(Stream& stream, Message& msg, CommSource src)
     }
 }
 
-void sendReadCommandResponse(Stream& stream, Message& msg, CommSource src) {
+void sendReadCommandResponse(Stream& stream, Message& msg, const CommSource src) {
     // if there is pending data, send it
     if (msg.buffer.size > 0) {
 // don't write to serial in debug mode
@@ -548,12 +545,13 @@ void sendReadCommandResponse(Stream& stream, Message& msg, CommSource src) {
         }
         msg.buffer.size = 0;
     }
+    msg.command = INVALID_COMMAND;  // Clear previous command
 }
 
-void validateAndProcessWriteCommand(Message& msg, CommSource src) {
+void validateAndProcessWriteCommand(Message& msg, const CommSource src) {
     if (msg.buffer.index == msg.buffer.size)
     {
-        uint8_t checksum = msg.buffer.calculateChecksum(msg.buffer.size - 1);
+        const uint8_t checksum = msg.buffer.calculateChecksum(msg.buffer.size - 1);
         if (msg.buffer.data[msg.buffer.size - 1] == checksum)
         {
             msg.handleWriteCommand(src);
@@ -563,5 +561,6 @@ void validateAndProcessWriteCommand(Message& msg, CommSource src) {
             LOG_ERROR("Invalid checksum", checksum, HEX);
         }
         msg.buffer.size = 0;
+        msg.command = INVALID_COMMAND;  // Clear previous command
     }
 }

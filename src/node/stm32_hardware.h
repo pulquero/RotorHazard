@@ -65,33 +65,36 @@ private:
         }
     }
 
+#ifdef ENABLE_SERIALUSB
+    void initUSBSerial(USBSerial& ser, unsigned long baudRate) {
+        ser.begin(baudRate);  // Start serial interface
+        while (!ser) {
+            delay(1);  // Wait for the Serial port to initialize
+        }
+    }
+#endif
+
 public:
     Stm32Hardware() : Hardware(LOW,HIGH) {
     }
     void init()
     {
         Hardware::init();
-
-        // turn-off all SPI chip selects
-        for (uint_fast8_t i=0; i<RX5808_SEL_PIN_COUNT; i++) {
-            uint8_t selPin = rx5808SelPinForNodeIndex(i);
-            pinMode(selPin, OUTPUT);
-            digitalWrite(selPin, HIGH);
-        }
-
-        SERIALCOM.begin(SERIAL_BAUD_RATE);  // Start serial interface
-        while (!SERIALCOM) {
-            delay(1);  // Wait for the Serial port to initialize
-        }
+        const uint8_t clkPin = PB4;   //CLK (CH3) output line to (all) RX5808 modules
+        const uint8_t dataPin = PB3;  //DATA (CH1) output line to (all) RX5808 modules
+        spi.init(clkPin, dataPin);
+#ifdef ENABLE_SERIALUSB
+        initUSBSerial(SERIALCOM, SERIAL_BAUD_RATE);
+#else
+        initSerial(SERIALCOM, SERIAL_BAUD_RATE);
+#endif
     }
 
     void initRxModule(uint_fast8_t nIdx, RxModule& rx)
     {
-        uint8_t dataPin = PB3;  //DATA (CH1) output line to (all) RX5808 modules
-        uint8_t clkPin = PB4;   //CLK (CH3) output line to (all) RX5808 modules
         uint8_t selPin = rx5808SelPinForNodeIndex(nIdx);  //SEL (CH2) output line to RX5808 module
         uint8_t rssiPin = rssiInputPinForNodeIndex(nIdx); //RSSI input from RX5808
-        rx.init(dataPin, clkPin, selPin, rssiPin);
+        rx.init(&spi, selPin, rssiPin);
     }
 
     const char* getProcessorType() {

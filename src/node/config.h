@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include "util/rhtypes.h"
 
-#define FIRMWARE_VERSION "B1.7"
+#define FIRMWARE_VERSION "B2.0"
 #define AVR_TARGET 1
 #define STM32_TARGET 2
 #define ESP32_TARGET 3
@@ -93,10 +93,18 @@
 #define USE_PH
 
 #if TARGET == ESP32_TARGET
-#define RX_IMPL NativeRxModule
+#define SPI_IMPL NativeSPI
+#elif TARGET == TEST_TARGET
+#define USE_SPI_3WIRE_READ
+#define SPI_IMPL TestSPI
 #else
-#define RX_IMPL BitBangRxModule
+#define SPI_IMPL BitBangSPI
+#if TARGET != SIL_TARGET
+#define USE_SPI_3WIRE_READ
 #endif
+#endif
+
+#define RX_IMPL RxModule
 
 #if TARGET != AVR_TARGET || MULTI_RHNODE_MAX == 1
 #define SCAN_HISTORY
@@ -267,8 +275,8 @@
 
 #ifdef DEBUG
 #define DEFAULT_NODE_ACTIVE true
-#define LOG_ERROR(msg, value, format) Serial.print(msg);Serial.println(value, format)
-#define LOG_DEBUG(msg, value, format) Serial.print(msg);Serial.println(value, format)
+#define LOG_ERROR(msg, value, format) Serial.print(msg);Serial.println(value, format);Serial.flush()
+#define LOG_DEBUG(msg, value, format) Serial.print(msg);Serial.println(value, format);Serial.flush()
 #else
 // dummy macro
 #define LOG_ERROR(msg, value, format)

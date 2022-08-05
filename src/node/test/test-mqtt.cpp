@@ -1,10 +1,12 @@
 #include <ArduinoUnitTests.h>
 #include <Godmode.h>
+#include "../hardware.h"
 #include "../rssirx.h"
 #include "../mqtt.h"
 
 unittest(mqtt_freq)
 {
+    hardware.initRxModule(0, rssiRxs.getRxModule(0));
     mqttProcessMessage("node_managers/timer/wifi-node-1/0/frequency", "5555", 4);
     Settings& settings = rssiRxs.getSettings(0);
     assertEqual(5555, settings.vtxFreq);
@@ -14,6 +16,7 @@ unittest(mqtt_freq)
 
 unittest(mqtt_power)
 {
+    hardware.initRxModule(0, rssiRxs.getRxModule(0));
     mqttProcessMessage("node_managers/timer/wifi-node-1/0/power", "0", 1);
     Settings& settings = rssiRxs.getSettings(0);
     assertFalse(rssiRxs.getRssiNode(0).active);

@@ -12,7 +12,6 @@ unittest(lifecycle)
   setup();
   assertTrue(testHardware.isInit);
   assertTrue(testHardware.isRxInit[0]);
-  assertTrue(testHardware.isSettingsInit[0]);
   for(int i=0; i<1000; i++) {
       loop();
       nano->micros += 10*1000;

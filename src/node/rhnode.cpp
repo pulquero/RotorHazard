@@ -36,20 +36,25 @@
 // Initialize program
 void setup()
 {
+    // init all VRX modules
+    for (int i=0; i<rssiRxs.getCount(); i++) {
+        RxModule& rx = rssiRxs.getRxModule(i);
+        hardware.initRxModule(i, rx);
+    }
+
+    // init SPI and other hardware
     hardware.init();
 
 #ifdef USE_WIFI
     wifiInit();
 #endif
 
-    // if EEPROM-check value matches then read stored values
+    // setup VRXs
     for (int i=0; i<rssiRxs.getCount(); i++) {
         RxModule& rx = rssiRxs.getRxModule(i);
-        hardware.initRxModule(i, rx);
         rx.reset();
 
         Settings& settings = rssiRxs.getSettings(i);
-        hardware.initSettings(i, settings);
         if (settings.vtxFreq == POWER_OFF_FREQ)
         {
             rx.powerDown();
@@ -57,10 +62,12 @@ void setup()
         else if (settings.vtxFreq > 0)
         {
             rx.setFrequency(settings.vtxFreq);
+            settings.vtxFreq = rx.getFrequency();
         }
     }
 
-    rssiRxs.start(usclock.millis(), usclock);
+    // start
+    rssiRxs.start(usclock);
 }
 
 static utime_t previousTick = 0;
@@ -73,8 +80,7 @@ void loop()
     // unsigned arithmetic to handle roll-over
     if ((us - previousTick) >= 1000)  // limit to once per millisecond
     {
-        const mtime_t ms = usclock.millis();
-        const bool crossingFlag = rssiRxs.readRssi(ms, usclock);
+        const bool crossingFlag = rssiRxs.readRssi();
         previousTick = us;
 
         // update settings and status LED
@@ -93,6 +99,7 @@ void loop()
             cmdNode.active = true;
         }
 
+        const mtime_t ms = usclock.millis();
         hardware.processStatusFlags(ms, currentStatusFlags);
 
         currentStatusFlags &= ~POLLING;

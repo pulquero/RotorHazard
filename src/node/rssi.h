@@ -19,7 +19,7 @@
 #include "util/unified-sendbuffer.h"
 
 constexpr uint16_t MAX_DURATION = 0xFFFF;
-inline uint16_t toDuration(uint32_t ms) { return uint16_t(min(ms, uint32_t(MAX_DURATION))); }
+inline uint16_t toDuration(const uint32_t ms) { return uint16_t(min(ms, uint32_t(MAX_DURATION))); }
 
 #if TARGET == AVR_TARGET
 constexpr uint8_t HISTORY_SIZE = 12;
@@ -65,7 +65,7 @@ constexpr uint8_t SCAN_HISTORY_SIZE = 4;
 
 constexpr freq_t MIN_SCAN_FREQ = 5645;
 constexpr freq_t MAX_SCAN_FREQ = 5945;
-constexpr uint16_t SCAN_FREQ_INCR = 5;
+constexpr uint16_t SCAN_FREQ_INCR = 4;
 
 enum Mode
 {
@@ -109,7 +109,7 @@ public:
     utime_t volatile loopTimeMicros = 0;
     utime_t lastloopMicros = 0;
 
-    rssi_t volatile rssi = 0;  // Smoothed rssi value
+    rssi_t volatile rssi = INVALID_RSSI;  // Smoothed rssi value
     mtime_t rssiTimestamp = 0;  // timestamp of the smoothed value
     rssi_t lastRssi = 0;
     int8_t volatile lifetime = 0;  // ph lifetime
@@ -185,7 +185,7 @@ public:
     inline void bufferPeak() {bufferPeak(false);};
     inline void bufferNadir() {bufferNadir(false);};
     inline void recordRssiChange(int delta);
-    ExtremumType nextToSendType();
+    ExtremumType nextToSendType() const;
     Extremum popNextToSend();
     inline bool checkForPeak(int rssiChange);
     inline bool checkForNadir(int rssiChange);
@@ -194,28 +194,24 @@ public:
 
 struct LastPass
 {
-    rssi_t volatile rssiPeak = 0;
+    rssi_t volatile rssiPeak = INVALID_RSSI;
     mtime_t volatile timestamp = 0;
-    rssi_t volatile rssiNadir = MAX_RSSI;
+    rssi_t volatile rssiNadir = INVALID_RSSI;
     uint8_t volatile lap = 0;
 };
 
 struct LastTrigger
 {
-    rssi_t volatile rssi = 0;
+    rssi_t volatile rssi = INVALID_RSSI;
     mtime_t volatile timestamp = 0;
     uint8_t volatile lap = 0;
     uint8_t volatile lifetime = 0;
 };
 
-struct RssiResult
+union RssiResult
 {
-    Mode mode;
-    union {
-        bool crossing;
-        freq_t nextFreq;
-        bool none;
-    };
+    bool crossing;
+    freq_t nextFreq;
 };
 
 class RssiNode
@@ -246,12 +242,10 @@ private:
 
     Filter<rssi_t> *filter;
 
-    inline RssiResult timerHandler(const int rssiChange);
-    inline RssiResult scannerHandler(const int rssiChange);
-    inline RssiResult rawHandler(const int rssiChange);
+    inline bool timerHandler(int rssiChange);
+    inline freq_t scannerHandler(int rssiChange);
+    inline void rawHandler(int rssiChange);
     inline ExtremumType updateHistory(int rssiChange);
-    inline freq_t updateScanHistory(freq_t freq);
-    inline void updateRssiHistory();
     bool checkForCrossing(ExtremumType t, int rssiChange);
 #if defined(USE_PH) || defined(__TEST__)
 #ifdef __TEST__
@@ -287,13 +281,13 @@ public:
 
     void setFilter(Filter<rssi_t> *f);
     void start(mtime_t ms, utime_t us);
-    bool isStateValid();
+    bool isStateValid() const;
     /**
      * Restarts rssi peak tracking for node.
      */
     void resetState(mtime_t ms);
     RssiResult process(rssi_t rssi, mtime_t ms);
-    bool isCrossing();
+    bool isCrossing() const;
     void startCrossing(uint8_t trigger);
     void endCrossing(uint8_t trigger);
 
@@ -305,7 +299,7 @@ public:
     LastTrigger& getLastExit() { return lastExit; }
 
 #ifdef USE_MQTT
-    void publishTrigger(const char* topic, LastTrigger& lastTrigger);
+    void publishTrigger(const char* topic, const LastTrigger& lastTrigger);
 #endif
 };
 #endif

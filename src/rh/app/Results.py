@@ -8,6 +8,8 @@ import logging
 import cachetools
 from threading import Lock
 from .RHRace import RaceStatus, StartBehavior, WinCondition, WinStatus
+from rh.app.RHRace import RHRace
+from typing import Any, Dict, List, Mapping, Union
 
 
 logger = logging.getLogger(__name__)
@@ -34,8 +36,8 @@ LEADERBOARD_BUILDERS = {
 }
 
 def _current_race_cache_key(*args, **kwargs):
-    current_race = args[0]
-    return cachetools.hashkey(id(current_race), current_race.modification_count)
+    current_race = args[-1]  # first argument maybe self
+    return cachetools.keys.hashkey(id(current_race), current_race.modification_count)
 
 
 class ResultsCache:
@@ -54,19 +56,19 @@ class ResultsCache:
         self._team_cache_lock = Lock()
 
     def evict_race(self, race_id):
-        self._race_cache.pop(cachetools.hashkey(race_id), None)
+        self._race_cache.pop(cachetools.keys.hashkey(race_id), None)
 
     def clear_races(self):
         self._race_cache.clear()
 
     def evict_heat(self, heat_id):
-        self._heat_cache.pop(cachetools.hashkey(heat_id), None)
+        self._heat_cache.pop(cachetools.keys.hashkey(heat_id), None)
 
     def clear_heats(self):
         self._heat_cache.clear()
 
     def evict_class(self, class_id):
-        self._heat_cache.pop(cachetools.hashkey(class_id), None)
+        self._heat_cache.pop(cachetools.keys.hashkey(class_id), None)
 
     def clear_classes(self):
         self._class_cache.clear()
@@ -109,10 +111,10 @@ class Results:
         return self.calc_leaderboard(heat_id=heat_id, round_id=round_id)
 
     @cachetools.cachedmethod(cache=lambda self:self.resultsCache._current_cache, key=_current_race_cache_key, lock=lambda self:self.resultsCache._current_cache_lock)
-    def calc_current_race_leaderboard(self, current_race):
+    def calc_current_race_leaderboard(self, current_race: RHRace):
         return self.calc_leaderboard(current_race=current_race)
 
-    def calc_leaderboard(self, **params):
+    def calc_leaderboard(self, **params) -> Mapping[str,Any]:
         ''' Generates leaderboards '''
         USE_CURRENT = False
         USE_ROUND = None
@@ -394,19 +396,19 @@ class Results:
     
                 else:
                     # build race lap store
-                    race_laps = {}
+                    race_laps_by_id: Dict[int,List[Any]] = {}
                     for race in selected_races:
-                        race_laps[race.id] = []
+                        race_laps_by_id[race.id] = []
                         for lap in result_pilot['pilot_laps']:
                             if lap.race_id == race.id:
-                                race_laps[race.id].append(lap)
+                                race_laps_by_id[race.id].append(lap)
     
                     for race in selected_races:
 
-                        if len(race_laps[race.id]) >= 3:
-                            for i in range(len(race_laps[race.id]) - 2):
+                        if len(race_laps_by_id[race.id]) >= 3:
+                            for i in range(len(race_laps_by_id[race.id]) - 2):
                                 all_consecutives.append({
-                                    'time': race_laps[race.id][i].lap_time + race_laps[race.id][i+1].lap_time + race_laps[race.id][i+2].lap_time,
+                                    'time': race_laps_by_id[race.id][i].lap_time + race_laps_by_id[race.id][i+1].lap_time + race_laps_by_id[race.id][i+2].lap_time,
                                     'race_id': race.id
                                 })
     
@@ -473,11 +475,11 @@ class Results:
             )))
     
             # determine ranking
-            last_rank = '-'
+            last_rank: Union[int,str] = '-'
             last_rank_laps = 0
             last_rank_time = 0
             for i, row in enumerate(leaderboard_by_race_time, start=1):
-                pos = i
+                pos: Union[int,str] = i
                 if last_rank_laps == row['laps'] and last_rank_time == row['total_time_laps_raw']:
                     pos = last_rank
                 last_rank = pos
@@ -553,7 +555,7 @@ class Results:
     
             row['position'] = pos
     
-        leaderboard_output = {
+        leaderboard_output: Dict[str,Any] = {
             'by_race_time': leaderboard_by_race_time,
             'by_fastest_lap': leaderboard_by_fastest_lap,
             'by_consecutives': leaderboard_by_consecutives
@@ -583,14 +585,14 @@ class Results:
         return leaderboard_output
 
     @cachetools.cachedmethod(cache=lambda self:self.resultsCache._team_cache, key=_current_race_cache_key, lock=lambda self:self.resultsCache._team_cache_lock)
-    def calc_team_leaderboard(self, current_race):
+    def calc_team_leaderboard(self, current_race: RHRace):
         '''Calculates and returns team-racing info.'''
         race_format = current_race.format
         current_race_results = self.calc_current_race_leaderboard(current_race)
 
         results = current_race_results['by_race_time']
 
-        teams = {}
+        teams: Dict[str,Any] = {}
 
         for line in results:
             contributing = 0
@@ -667,11 +669,11 @@ class Results:
         )))
 
         # determine ranking
-        last_rank = '-'
+        last_rank: Union[int,str] = '-'
         last_rank_laps = 0
         last_rank_time = 0
         for i, row in enumerate(leaderboard_by_race_time, start=1):
-            pos = i
+            pos: Union[int,str] = i
             if last_rank_laps == row['laps'] and last_rank_time == row['average_lap_raw']:
                 pos = last_rank
             last_rank = pos
@@ -727,7 +729,7 @@ class Results:
             last_rank_consecutive = row['average_consecutives_raw']
             row['position'] = pos
 
-        leaderboard_output = {
+        leaderboard_output: Dict[str,Any] = {
             'by_race_time': leaderboard_by_race_time,
             'by_avg_fastest_lap': leaderboard_by_fastest_lap,
             'by_avg_consecutives': leaderboard_by_consecutives
@@ -758,7 +760,7 @@ class Results:
 
         return leaderboard_output
 
-    def check_win_condition_result(self, raceObj, interfaceObj, **kwargs):
+    def check_win_condition_result(self, raceObj: RHRace, interfaceObj, **kwargs):
         race_format = raceObj.format
         if race_format:
             if race_format.team_racing_mode:
@@ -789,7 +791,7 @@ class Results:
                     return self.check_win_laps_and_overtime(raceObj, interfaceObj, **kwargs)
         return None
 
-    def check_win_laps_and_time(self, raceObj, interfaceObj, **kwargs):
+    def check_win_laps_and_time(self, raceObj: RHRace, interfaceObj, **kwargs):
         # if racing is stopped, all pilots have completed last lap after time expired,
         # or a forced determination condition, make a final call
         if raceObj.race_status == RaceStatus.DONE or \
@@ -867,7 +869,7 @@ class Results:
             'status': WinStatus.NONE
         }
 
-    def check_win_most_laps(self, raceObj, interfaceObj, **kwargs):
+    def check_win_most_laps(self, raceObj: RHRace, interfaceObj, **kwargs):
         if raceObj.race_status == RaceStatus.DONE or \
                     raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
             leaderboard = raceObj.results['by_race_time']
@@ -952,7 +954,7 @@ class Results:
             'status': WinStatus.NONE
         }
 
-    def check_win_laps_and_overtime(self, raceObj, interfaceObj, **kwargs):
+    def check_win_laps_and_overtime(self, raceObj: RHRace, interfaceObj, **kwargs):
         if (raceObj.race_status == RaceStatus.RACING and raceObj.timer_running == False) or \
                         raceObj.race_status == RaceStatus.DONE or 'at_finish' in kwargs:
             race_format = raceObj.format
@@ -980,7 +982,7 @@ class Results:
             'status': WinStatus.NONE
         }
 
-    def check_win_first_to_x(self, raceObj, interfaceObj, **kwargs):
+    def check_win_first_to_x(self, raceObj: RHRace, interfaceObj, **kwargs):
         race_format = raceObj.format
         if race_format.number_laps_win: # must have laps > 0 to win
             leaderboard = raceObj.results['by_race_time']
@@ -1020,7 +1022,7 @@ class Results:
             'status': WinStatus.NONE
         }
 
-    def check_win_fastest_lap(self, raceObj, **kwargs):
+    def check_win_fastest_lap(self, raceObj: RHRace, **kwargs):
         if raceObj.race_status == RaceStatus.DONE or \
                     raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
             leaderboard = raceObj.results['by_fastest_lap']
@@ -1065,7 +1067,7 @@ class Results:
             'status': WinStatus.NONE
         }
 
-    def check_win_fastest_consecutive(self, raceObj, **kwargs):
+    def check_win_fastest_consecutive(self, raceObj: RHRace, **kwargs):
         if raceObj.race_status == RaceStatus.DONE or \
                     raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
             leaderboard = raceObj.results['by_consecutives']
@@ -1106,7 +1108,7 @@ class Results:
             'status': WinStatus.NONE
         }
 
-    def check_win_team_laps_and_time(self, raceObj, interfaceObj, **kwargs):
+    def check_win_team_laps_and_time(self, raceObj: RHRace, interfaceObj, **kwargs):
         if raceObj.race_status == RaceStatus.DONE or \
                     raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
             team_info = self.calc_team_leaderboard(raceObj)
@@ -1202,7 +1204,7 @@ class Results:
             'status': WinStatus.NONE
         }
 
-    def check_win_team_most_laps(self, raceObj, interfaceObj, **kwargs):
+    def check_win_team_most_laps(self, raceObj: RHRace, interfaceObj, **kwargs):
         if raceObj.race_status == RaceStatus.DONE or \
                     raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
             team_info = self.calc_team_leaderboard(raceObj)
@@ -1291,7 +1293,7 @@ class Results:
             'status': WinStatus.NONE
         }
 
-    def check_win_team_laps_and_overtime(self, raceObj, interfaceObj, **kwargs):
+    def check_win_team_laps_and_overtime(self, raceObj: RHRace, interfaceObj, **kwargs):
         if (raceObj.race_status == RaceStatus.RACING and not raceObj.timer_running) or \
                         raceObj.race_status == RaceStatus.DONE or 'at_finish' in kwargs:
             race_format = raceObj.format
@@ -1319,7 +1321,7 @@ class Results:
             'status': WinStatus.NONE
         }
 
-    def check_win_team_first_to_x(self, raceObj, interfaceObj, **kwargs):
+    def check_win_team_first_to_x(self, raceObj: RHRace, interfaceObj, **kwargs):
         race_format = raceObj.format
         if race_format.number_laps_win: # must have laps > 0 to win
             team_leaderboard = self.calc_team_leaderboard(raceObj)['by_race_time']
@@ -1355,7 +1357,7 @@ class Results:
             'status': WinStatus.NONE
         }
 
-    def check_win_team_fastest_lap(self, raceObj, **kwargs):
+    def check_win_team_fastest_lap(self, raceObj:RHRace, **kwargs):
         if raceObj.race_status == RaceStatus.DONE or \
                     raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
             team_leaderboard = self.calc_team_leaderboard(raceObj)['by_avg_fastest_lap']
@@ -1416,7 +1418,7 @@ class Results:
             'status': WinStatus.NONE
         }
 
-    def check_win_team_fastest_consecutive(self, raceObj, **kwargs):
+    def check_win_team_fastest_consecutive(self, raceObj: RHRace, **kwargs):
         if raceObj.race_status == RaceStatus.DONE or \
                     raceObj.check_all_nodes_finished() or 'forced' in kwargs: # racing must be completed
             team_leaderboard = self.calc_team_leaderboard(raceObj)['by_avg_consecutives']
@@ -1452,7 +1454,7 @@ class Results:
                         }
 
                     for node in raceObj.node_laps:
-                        team = raceObj.node_teams[node].team
+                        team = raceObj.node_pilots[node].team
                         if team is not None:
                             laps = raceObj.node_laps[node]
                             if len(laps) >= 2:

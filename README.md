@@ -1,6 +1,6 @@
-![RotorHazard Logo](/src/server/static/image/RotorHazard%20Logo.svg)
+![RotorHazard Logo](/src/rh/static/image/RotorHazard%20Logo.svg)
 
-![CI](https://github.com/pulquero/RotorHazard/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/pulquero/RotorHazard/actions/workflows/ci.yml/badge.svg)](https://github.com/pulquero/RotorHazard/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/github/pulquero/RotorHazard/coverage.svg?branch=BetaHazard)](https://codecov.io/gh/pulquero/RotorHazard/)
 
 # BetaHazard - the forthcoming RotorHazard v4 Beta
@@ -112,7 +112,7 @@ An easy-to-build single-node version of RotorHazard may also be constructed; see
 RotorHazard is compatible with the hardware specifications of the [Delta5 Race Timer](https://github.com/scottgchin/delta5_race_timer). Install the software on  existing hardware per the [setup instructions](doc/Software%20Setup.md), ensuring that you complete a [re-flash of the Arduinos](doc/Software%20Setup.md#rotorhazard-node-code).
 
 ## Additional Resources
-Links to external resources are available from the [Wiki](https://github.com/pulquero/BetaHazard/wiki), including extended tutorials, complete SD card images, video content, and a Raspberry Pi setup/install/upgrade/node flashing tool. Browsing these resources is strongly recommended for new users.
+Links to external resources are available from the [Wiki](https://github.com/pulquero/RotorHazard/wiki), including extended tutorials, complete SD card images, video content, and a Raspberry Pi setup/install/upgrade/node flashing tool. Browsing these resources is strongly recommended for new users.
 
 ## Contributors
 * Michael Niggel

@@ -216,6 +216,7 @@
 							rotorhazard.nodes[i].crossingSeries.append(now, -10);
 						}
 						rotorhazard.nodes[i].lifetimeSeries.append(now, Math.abs(lifetimeValue) + rotorhazard.nodes[i].graph.options.minValue);
+						rotorhazard.nodes[i].updateThresholds();
 					}
 				}
 			}
@@ -552,7 +553,7 @@
 				$('.node_nadir_rssi_' + i).html(msg.node_nadir_rssi[i]);
 				$('.pass_peak_rssi_' + i).html(msg.pass_peak_rssi[i]);
 				$('.pass_nadir_rssi_' + i).html(msg.pass_nadir_rssi[i]);
-				$('.debug_pass_count_' + i).html(msg.debug_pass_count[i]);
+				$('.pass_count_' + i).html(msg.pass_count[i]);
 
 				rotorhazard.nodes[i].node_peak_rssi = msg.node_peak_rssi[i];
 				rotorhazard.nodes[i].node_nadir_rssi = msg.node_nadir_rssi[i];
@@ -1130,6 +1131,7 @@
 				selected = selectbox.val();
 				selectbox.empty();
 
+				selectbox.append('<option value="0">None</option>');
 				for (var i in msg.pilots) {
 					selectbox.append('<option value="'+ msg.pilots[i].pilot_id + '">' + msg.pilots[i].callsign + ' (' + msg.pilots[i].name + ')</option>');
 				}
@@ -2345,7 +2347,7 @@
 					<tr class="datarow">
 						<td>{{ __('PassCount') }}</td>
 						<td>
-							<span class="debug_pass_count_{{ node }}"></span>
+							<span class="pass_count_{{ node }}"></span>
 						</td>
 					</tr>
 				</table>

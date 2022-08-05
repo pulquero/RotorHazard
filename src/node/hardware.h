@@ -16,9 +16,16 @@ private:
     const uint8_t ledOnValue, ledOffValue;
 
 protected:
+    SPI_IMPL spi;
 #ifdef LED_BUILTIN
     bool currentStatusLedFlag = false;
 #endif
+    void initSerial(HardwareSerial& ser, unsigned long baudRate) {
+        ser.begin(baudRate);  // Start serial interface
+        while (!ser) {
+            delay(1);  // Wait for the Serial port to initialize
+        }
+    }
 
 public:
     Hardware(uint8_t ledOn, uint8_t ledOff) : ledOnValue(ledOn), ledOffValue(ledOff) {
@@ -33,7 +40,6 @@ public:
         pinMode(LED_BUILTIN, OUTPUT);
 #endif
     }
-    virtual void initSettings(uint_fast8_t nIdx, Settings& settings) {}
     virtual void initRxModule(uint_fast8_t nIdx, RxModule& rx) = 0;
     virtual void processStatusFlags(mtime_t ms, uint8_t statusFlags) {}
     /**
@@ -63,9 +69,6 @@ public:
         return RHFEAT_NONE;
 #endif
     }
-    virtual void storeFrequency(freq_t freq) {}
-    virtual void storeEnterAtLevel(rssi_t rssi) {}
-    virtual void storeExitAtLevel(rssi_t rssi) {}
     virtual void setStatusLed(bool onFlag) {
 #ifdef LED_BUILTIN
         if (onFlag)

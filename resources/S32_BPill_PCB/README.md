@@ -30,7 +30,7 @@ The RotorHazard S32_BPill PCB v1.0 represents the next generation of race-timer 
 
 * Optional "extra" LED, which can be panel mounted on the timer case
 
-* Connector pads for LED-strips -- one to the Raspberry Pi, one to the STM32 processor
+* Connector pads for LED-strips: J6 "Pi_LED" (near the middle of the board); pin 1 is ground, pin 2 is signal (going to GPIO10 on the Raspberry Pi)
 <br>
 
 Main PCB:<br>
@@ -89,6 +89,8 @@ Bill of Materials: [PDF](files/RotorHazard_S32_BPill_R1_bd02.pdf) | [XLS](files/
 * If you install the Boot0 [jumper wire](https://www.adafruit.com/product/1951) (and leave it installed) then the Raspberry Pi will always be able to flash the BPill. Without the wire, flash-updates will work if the RotorHazard firmware is operational on the BPill (it has a jump-to-bootloader command), but if not then you'd need to move the 2-pin header clip to the '1' position on Boot0. The red wire in [this pic](pic/RH_S32_BPill_Boot0Jumper.jpg) is the Boot0 jumper wire.
 
 * Note that during the first-time power up, if the buzzer is constantly beeping (because the BPill is not yet flashed), you can put the 2-pin header-clip on the '1' position of the Boot0 jumper on the BPill module and press the reset button to silence it, and leave it on there until the initial flash of the BPill. After that, the Boot0 wire jumper should be installed and left in place. See the links above for BPill pinouts.
+
+* There have been reports that with some BPill modules the buzzer emits a constant tone -- a workaround for this is to wire the '+' side of the buzzer to +3.3V (J12) instead of +5V.  Using a different BPill module may also fix the issue.
 
 * The recommended method for installing the node firmware onto the BPill processor is to use the `Update Nodes` button (in the 'System' section on the 'Settings' page) on the RotorHazard web GUI. The "dtoverlay=miniuart-bt" line needs to have been added to the "/boot/config.txt" file on the RPi for the flash-update to succeed (see instructions in '[doc/Software Setup.md](../../doc/Software%20Setup.md)').
 

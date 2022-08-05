@@ -2,9 +2,14 @@
 
 MicroClock usclock;
 
+#if TARGET == STM32_TARGET
+#define USE_NATIVE_TIMER
+#endif
+
+
 utime_t MicroClock::tickMicros()
 {
-#if TARGET != STM32_TARGET
+#ifndef USE_NATIVE_TIMER
     const utime_t currentTick = ::micros();
     // unsigned arithmetic to handle roll-over
     uint32_t elapsed = currentTick - prevTick;
@@ -24,10 +29,19 @@ utime_t MicroClock::tickMicros()
 
 mtime_t MicroClock::millis()
 {
-#if TARGET != STM32_TARGET
+#ifndef USE_NATIVE_TIMER
     return timeMillis;
 #else
     // native impl is sufficiently accurate
     return ::millis();
 #endif
+}
+
+void MicroClock::delay(mtime_t ms)
+{
+    const utime_t duration = 1000*ms;
+    const utime_t now = tickMicros();
+    while (tickMicros() - now < duration) {
+        delayMicroseconds(500);
+    }
 }

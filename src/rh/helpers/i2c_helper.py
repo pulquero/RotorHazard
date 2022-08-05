@@ -10,7 +10,7 @@ import os
 import logging
 from time import perf_counter
 
-I2C_CHILL_TIME = float(os.environ.get('RH_I2C_SLEEP', '0.015')) # Delay after i2c read/write
+I2C_CHILL_TIME = float(os.environ.get('RH_I2C_SLEEP', '0.015'))  # Delay after i2c read/write
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class I2CBus(object):
     def __init__(self, bus):
         self.id = bus
-        self.i2c = SMBus(bus) # Start i2c bus
+        self.i2c = SMBus(bus)  # Start i2c bus
         self.i2c_rlock_obj = gevent.lock.RLock()  # for limiting i2c to 1 read/write at a time
         self.i2c_timestamp = -1
 
@@ -33,7 +33,6 @@ class I2CBus(object):
             return
         time_remaining = self.i2c_timestamp + I2C_CHILL_TIME - perf_counter()
         if (time_remaining > 0):
-            # print("i2c sleep {0}".format(time_remaining))
             gevent.sleep(time_remaining)
 
     def with_i2c(self, callback):

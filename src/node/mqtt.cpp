@@ -4,10 +4,11 @@
 #include "rssirx.h"
 #include "mqtt.h"
 #include "hardware.h"
+#include "commands.h"
 
 static int sprintNodeTopic(char* dest);
 
-inline int sprints(char* dest, const char* src) {
+inline int sprints(char*const dest, const char*const src) {
   strcpy(dest, src);
   return strlen(src);
 }
@@ -15,8 +16,8 @@ inline int sprints(char* dest, const char* src) {
 #ifndef __TEST__
 #include <MQTT.h>
 
-static void mqttMessageReceived(MQTTClient *client, char topic[], char msg[], int msgLen);
-static void mqttProcessMessage(const char topic[], const char msg[], int msgLen);
+static void mqttMessageReceived(MQTTClient *client, char topic[], char msg[], const int msgLen);
+static void mqttProcessMessage(const char topic[], const char msg[], const int msgLen);
 
 static MQTTClient mqttClient(256);
 
@@ -60,7 +61,7 @@ static int findNodeIndex(RssiNode& rssiNode) {
     return -1;
 }
 
-void mqttPublish(RssiNode& rssiNode, const char subTopic[], const char msg[], int msgLen) {
+void mqttPublish(RssiNode& rssiNode, const char subTopic[], const char msg[], const int msgLen) {
     int idx = findNodeIndex(rssiNode);
     if (idx >= 0) {
         char topic[128] = "";
@@ -74,12 +75,12 @@ void mqttPublish(RssiNode& rssiNode, const char subTopic[], const char msg[], in
     }
 }
 
-void mqttMessageReceived(MQTTClient *client, char topic[], char msg[], int msgLen) {
+void mqttMessageReceived(MQTTClient *client, char topic[], char msg[], const int msgLen) {
     mqttProcessMessage(topic, msg, msgLen);
 }
 #else
 // test stub
-void mqttPublish(RssiNode& rssiNode, const char subTopic[], const char msg[], int msgLen) {
+void mqttPublish(RssiNode& rssiNode, const char subTopic[], const char msg[], const int msgLen) {
 }
 #endif
 
@@ -87,14 +88,14 @@ void mqttPublish(RssiNode& rssiNode, const char subTopic[], const char msg[], in
 constexpr int maxIdxDigits = 2;
 constexpr int maxFreqDigits = 4;
 
-inline bool copyNonNegativeInteger(char* dst, const char* src, int maxLen);
+inline bool copyNonNegativeInteger(char* dst, const char* src, const int maxLen);
 
 /**
  * Topic structure:
  * <nodeManager>/<idx>/frequency
  * <nodeManager>/<idx>/power
  */
-void mqttProcessMessage(const char topic[], const char msg[], int msgLen) {
+void mqttProcessMessage(const char topic[], const char msg[], const int msgLen) {
     char homeTopic[64] = "";
     int n = sprintNodeTopic(homeTopic);
     if (strncmp(topic, homeTopic, n) == 0) {
@@ -117,23 +118,12 @@ void mqttProcessMessage(const char topic[], const char msg[], int msgLen) {
                     char szFreq[maxFreqDigits+1];
                     if (msgLen <= maxFreqDigits && copyNonNegativeInteger(szFreq, msg, msgLen)) {
                         freq_t freq = atol(szFreq);
-                        Settings& settings = rssiNode.getSettings();
-                        if (freq != settings.vtxFreq)
-                        {
-                            settings.vtxFreq = freq;
-                            hardware.storeFrequency(freq);
-                            rssiNode.resetState(usclock.millis());  // restart rssi peak tracking for node
-                        }
-                        if (rx.isPoweredDown()) {
-                            rx.reset();
-                        }
-                        rx.setFrequency(freq);
-                        rssiNode.active = true;
+                        setFrequency(rssiNode, rx, freq);
                     }
                 } else if (strcmp(endIdxPtr, "/power") == 0) {
                     if (msgLen == 1 && msg[0] == '1' && rx.isPoweredDown()) {
                         rx.reset();
-                        rssiNode.resetState(usclock.millis());  // restart rssi peak tracking for node
+                        rssiNode.resetState(usclock.millis());
                         rssiNode.active = true;
                     } else if (msgLen == 1 && msg[0] == '0' && !rx.isPoweredDown()) {
                         rx.powerDown();
@@ -145,14 +135,14 @@ void mqttProcessMessage(const char topic[], const char msg[], int msgLen) {
     }
 }
 
-int sprintNodeTopic(char* dest) {
+int sprintNodeTopic(char*const dest) {
     int n = sprints(dest, MQTT_TOPIC);
     dest[n++] = '/';
     n += sprints(dest+n, WIFI_HOSTNAME);
     return n;
 }
 
-bool copyNonNegativeInteger(char* dst, const char* src, int len) {
+bool copyNonNegativeInteger(char*const dst, const char*const src, const int len) {
     int i = 0;
     for (; i<len; i++) {
         if (isdigit(src[i])) {
