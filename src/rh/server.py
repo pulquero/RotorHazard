@@ -5631,7 +5631,7 @@ try:
                           PROGRAM_START, \
                           emit_cluster_connect_change, RELEASE_VERSION)
         CLUSTER.addSecondary(secondary)
-        track_location = 'Split '+(secondary.id+1)
+        track_location = 'Split '+ str(secondary.id+1)
         prev_loc_coord = DEFAULT_TRACK['layout'][-1]['location']
         dist = secondary_info['distance'] if 'distance' in secondary_info else 0
         track_coord = [prev_loc_coord[0] + dist, prev_loc_coord[1]]
