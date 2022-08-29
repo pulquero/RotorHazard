@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 
 RELEASE_VERSION = "4.0.0-dev.1"  # Public release version code
-SERVER_API = 32+8  # Server API version
+SERVER_API = 32+9  # Server API version
 NODE_API_SUPPORTED = 37  # Minimum supported node version
 NODE_API_BEST = 37  # Most recent node API
 JSON_API = 3  # JSON API version
@@ -2554,6 +2554,10 @@ def on_save_laps():
                     'laps': RACE.node_laps[seat],
                     'splits': RACE.node_splits[seat]
                     }
+                if hasattr(node, 'lifetime_history'):
+                    lifetime_times, lifetime_values = node.lifetime_history.get()
+                    race_data[seat]['lifetime_values'] = json.dumps(lifetime_values)
+                    race_data[seat]['lifetime_times'] = json.dumps(lifetime_times)
 
     RHDATA.add_race_data(race_data)
 
@@ -3561,6 +3565,8 @@ def emit_race_list(**params):
                         'node_index': pilotrace.node_index,
                         'history_values': json.loads(pilotrace.history_values),
                         'history_times': json.loads(pilotrace.history_times),
+                        'lifetime_values': json.loads(pilotrace.lifetime_values) if pilotrace.lifetime_values else None,
+                        'lifetime_times': json.loads(pilotrace.lifetime_times) if pilotrace.lifetime_times else None,
                         'laps': laps,
                         'enter_at': pilotrace.enter_at,
                         'exit_at': pilotrace.exit_at,

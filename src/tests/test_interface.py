@@ -1,5 +1,5 @@
 import unittest
-from rh.interface import calculate_checksum, ensure_iter, ExtremumFilter, RssiHistory
+from rh.interface import calculate_checksum, ensure_iter, ExtremumFilter, SampleHistory
 from rh.interface.MockInterface import MockInterface
 
 
@@ -25,7 +25,7 @@ class InterfaceTest(unittest.TestCase):
         self.assertListEqual(expected, actual[1:])
 
     def test_rssi_history_append(self):
-        history = RssiHistory()
+        history = SampleHistory()
         history.set([0,1], [5,5])
         history.append(10, 5)
         actual_times, actual_values = history.get()
@@ -33,7 +33,7 @@ class InterfaceTest(unittest.TestCase):
         self.assertListEqual(actual_values, [5,5])
 
     def test_rssi_history_merge(self):
-        history = RssiHistory()
+        history = SampleHistory()
         history.set([0,1,2,3], [5,3,6,7])
         pass_history = [(0.5,8), (2,9)]
         history.merge(pass_history)

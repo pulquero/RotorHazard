@@ -174,7 +174,7 @@ class LapRFInterface(BaseHardwareInterface):
                     node.node_peak_rssi = max(rssi, node.node_peak_rssi)
                     node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
                     filtered_ts_ms, filtered_rssi = node.history_filter.filter(rssi_ts_ms, rssi)
-                    self.append_history(node, filtered_ts_ms, filtered_rssi)
+                    self.append_rssi_history(node, filtered_ts_ms, filtered_rssi)
         elif isinstance(record, laprf.PassingEvent):
             assert record.slot_index is not None and record.slot_index > 0
             assert record.rtc_time is not None

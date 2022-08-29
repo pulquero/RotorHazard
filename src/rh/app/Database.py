@@ -132,6 +132,8 @@ class SavedPilotRace(DB.Model):
     pilot_id = DB.Column(DB.Integer, DB.ForeignKey("pilot.id"), nullable=False)
     history_values = DB.Column(DB.String, nullable=True)
     history_times = DB.Column(DB.String, nullable=True)
+    lifetime_values = DB.Column(DB.String, nullable=True)
+    lifetime_times = DB.Column(DB.String, nullable=True)
     penalty_time = DB.Column(DB.Integer, nullable=False)
     penalty_desc = DB.Column(DB.String, nullable=True)
     enter_at = DB.Column(DB.Integer, nullable=False)

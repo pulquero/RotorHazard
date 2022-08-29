@@ -8,7 +8,7 @@ import json
 
 import rh.interface.nodes as node_pkg
 from rh.util.Plugins import Plugins
-from . import pack_8, unpack_8, unpack_8_signed, pack_16, unpack_16
+from . import pack_8, unpack_8, unpack_8_signed, pack_16, unpack_16, SampleHistory
 from .BaseHardwareInterface import BaseHardwareInterface
 from .Node import Node, NodeManager
 from rh.util import Averager
@@ -264,6 +264,9 @@ class RHNodeManager(NodeManager):
 class RHNode(Node):
     def __init__(self, index, multi_node_index, manager):
         super().__init__(index, multi_node_index, manager)
+        self.lifetime_history = SampleHistory()
+        self.used_history_count = 0
+        self.empty_history_count = 0
         self._loop_time_stats = Averager(STATS_WINDOW_SIZE)
         self._roundtrip_stats = Averager(STATS_WINDOW_SIZE)
         self.data_logger = None
@@ -405,6 +408,9 @@ class RHNode(Node):
             rssi_val = unpack_rssi(self, data[3:])
             if self.is_valid_rssi(rssi_val):
                 extremum_rssi = rssi_val
+                self.used_history_count += 1
+            else:
+                self.empty_history_count += 1
 
             ms_since_first_time = unpack_time_since(self, READ_ANALYTICS, data[4:])  # ms *since* the first time
             extremum_timestamp_ms = sent_timestamp_ms - ms_since_first_time

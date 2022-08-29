@@ -1,7 +1,7 @@
 import gevent
 import bisect
 from collections import namedtuple
-from typing import List
+from typing import List, Tuple
 
 
 RssiSample = namedtuple('RssiSample', ['timestamp', 'rssi'], defaults=[0,0])
@@ -68,7 +68,7 @@ def ensure_iter(l):
     return l
 
 
-class RssiHistory:
+class SampleHistory:
     def __init__(self):
         # timestamps (ms)
         self._times: List[int] = []
@@ -79,26 +79,26 @@ class RssiHistory:
         assert len(self._times) == len(self._values)
         return len(self._times)
 
-    def append(self, ts: int, rssi: int):
+    def append(self, ts: int, value: int):
         with self.lock:
             n = len(self._times)
             # if previous two entries have same value then just extend time on last entry
-            if n >= 2 and self._values[n-1] == rssi and self._values[n-2] == rssi:
+            if n >= 2 and self._values[n-1] == value and self._values[n-2] == value:
                 self._times[n-1] = ts
             else:
                 self._times.append(ts)
-                self._values.append(rssi)
+                self._values.append(value)
 
-    def merge(self, new_entries: List[RssiSample]):
+    def merge(self, new_entries: List[Tuple[int, int]]):
         with self.lock:
-            for ts_rssi in new_entries:
-                idx = bisect.bisect_left(self._times, ts_rssi[0])
-                if idx < len(self._times) and ts_rssi[0] == self._times[idx]:
+            for ts_value in new_entries:
+                idx = bisect.bisect_left(self._times, ts_value[0])
+                if idx < len(self._times) and ts_value[0] == self._times[idx]:
                     # replace existing value
-                    self._values[idx] = ts_rssi[1]
+                    self._values[idx] = ts_value[1]
                 else:
-                    self._times.insert(idx, ts_rssi[0])
-                    self._values.insert(idx, ts_rssi[1])
+                    self._times.insert(idx, ts_value[0])
+                    self._values.insert(idx, ts_value[1])
             
     def set(self, times, values):
         if len(times) != len(values):

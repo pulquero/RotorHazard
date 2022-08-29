@@ -487,6 +487,8 @@ class RHData():
                         self.restore_table(self._Database.SavedPilotRace, racePilot_query_data, defaults={
                             'history_values': None,
                             'history_times': None,
+                            'lifetime_values': None,
+                            'lifetime_times': None,
                             'penalty_time': None,
                             'penalty_desc': None,
                             'enter_at': None,
@@ -1618,6 +1620,8 @@ class RHData():
                 pilot_id=node_data['pilot_id'],
                 history_values=node_data['history_values'],
                 history_times=node_data['history_times'],
+                lifetime_values=node_data.get('lifetime_values'),
+                lifetime_times=node_data.get('lifetime_times'),
                 penalty_time=0,
                 enter_at=node_data['enter_at'],
                 exit_at=node_data['exit_at']
