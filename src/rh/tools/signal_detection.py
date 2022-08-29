@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple
 
 def load_races(db_file):
 	APP = Flask(__name__)
-	APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../' + db_file
+	APP.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../../' + db_file
 	APP.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 	DB = Database.DB
 	DB.init_app(APP)

@@ -39,7 +39,7 @@ class SecondaryNode:
         self.isMirrorMode = (str(info.get('mode', SecondaryNode.SPLIT_MODE)) == SecondaryNode.MIRROR_MODE)
         self.secondaryModeStr = SecondaryNode.MIRROR_MODE if self.isMirrorMode else SecondaryNode.SPLIT_MODE
         self.recEventsFlag = info.get('recEventsFlag', self.isMirrorMode)
-        self.queryInterval = 1000*info['queryInterval'] if 'queryInterval' in info else 0
+        self.queryInterval_ms = 1000*info['queryInterval'] if 'queryInterval' in info else 0
         if self.queryInterval_ms <= 0:
             self.queryInterval_ms = 10000
         self.firstQueryInterval_ms = 3000 if self.queryInterval_ms >= 3000 else 1000

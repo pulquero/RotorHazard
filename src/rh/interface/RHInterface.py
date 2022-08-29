@@ -541,20 +541,20 @@ class RHInterface(BaseHardwareInterface):
     
                         if has_entered:
                             cmd = READ_ENTER_STATS
-                            crossing_data = node.poll_command(cmd, 5)
+                            crossing_data = node.read_command(cmd, 5)
                             trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime = node.unpack_trigger_stats(cmd, crossing_data)
                             if trigger_count is not None and trigger_timestamp is not None and trigger_rssi is not None and trigger_lifetime is not None:
-                                self.process_crossing(node, True, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime)
+                                self.process_enter_trigger(node, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime)
     
                         if has_exited:
                             cmd = READ_EXIT_STATS
-                            crossing_data = node.poll_command(cmd, 5)
+                            crossing_data = node.read_command(cmd, 5)
                             trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime = node.unpack_trigger_stats(cmd, crossing_data)
                             if trigger_count is not None and trigger_timestamp is not None and trigger_rssi is not None and trigger_lifetime is not None:
-                                self.process_crossing(node, False, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime)
+                                self.process_exit_trigger(node, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime)
     
                         if has_new_lap:
-                            lap_stats_data = node.poll_command(READ_LAP_STATS, 5)
+                            lap_stats_data = node.read_command(READ_LAP_STATS, 5)
                             lap_count, pass_timestamp, pass_peak_rssi, pass_nadir_rssi = node.unpack_lap_stats(lap_stats_data)
                             if lap_count is not None and pass_timestamp is not None:
                                 self.process_lap_stats(node, lap_count, pass_timestamp, pass_peak_rssi, pass_nadir_rssi)

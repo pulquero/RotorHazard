@@ -79,11 +79,11 @@ class InterfaceTest(unittest.TestCase):
 
         lap_enter_exit = intf.is_new_lap(node, 110, 20, 0, True)  # enter
         self.assertTupleEqual(lap_enter_exit, (False, True, False))
-        intf.process_crossing(node, True, 1, 100, 22, 8)
+        intf.process_enter_trigger(node, 1, 100, 22, 8)
 
         lap_enter_exit = intf.is_new_lap(node, 210, 20, 0, False)  # exit
         self.assertTupleEqual(lap_enter_exit, (False, False, True))
-        intf.process_crossing(node, False, 1, 200, 21, 8)
+        intf.process_exit_trigger(node, 1, 200, 21, 8)
 
         lap_enter_exit = intf.is_new_lap(node, 230, 20, 1, False)  # lap
         self.assertTupleEqual(lap_enter_exit, (True, False, False))
@@ -113,7 +113,7 @@ class InterfaceTest(unittest.TestCase):
         lap_enter_exit = intf.is_new_lap(node, 10, 20, 0, True)  # enter
         lap_enter_exit = intf.is_new_lap(node, 20, 20, 0, True)  # enter
         self.assertTupleEqual(lap_enter_exit, (False, True, False))
-        intf.process_crossing(node, True, 1, 100, 22, 8)
+        intf.process_enter_trigger(node, 1, 100, 22, 8)
         lap_enter_exit = intf.is_new_lap(node, 110, 20, 0, True)  # enter
         self.assertTupleEqual(lap_enter_exit, (False, False, False))
 
@@ -175,7 +175,7 @@ class InterfaceTest(unittest.TestCase):
 
         lap_enter_exit = intf.is_new_lap(node, 20, 20, 0, False)  # exit
         self.assertTupleEqual(lap_enter_exit, (False, True, True))
-        intf.process_crossing(node, False, 1, 200, 22, 8)
+        intf.process_exit_trigger(node, 1, 200, 22, 8)
 
         lap_enter_exit = intf.is_new_lap(node, 210, 20, 1, False)  # lap
         self.assertTupleEqual(lap_enter_exit, (True, True, False))
@@ -191,7 +191,7 @@ class InterfaceTest(unittest.TestCase):
 
         lap_enter_exit = intf.is_new_lap(node, 10, 20, 0, True)  # enter
         self.assertTupleEqual(lap_enter_exit, (False, True, False))
-        intf.process_crossing(node, True, 1, 100, 22, 8)
+        intf.process_enter_trigger(node, 1, 100, 22, 8)
 
         lap_enter_exit = intf.is_new_lap(node, 110, 20, 0, False)  # exit
         self.assertTupleEqual(lap_enter_exit, (False, False, True))

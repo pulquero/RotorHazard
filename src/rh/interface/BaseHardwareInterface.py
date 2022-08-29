@@ -200,30 +200,36 @@ class BaseHardwareInterface:
         has_exited = node.exit_count < node.pending_exit_count
         return has_new_lap, has_entered, has_exited
 
-    def process_crossing(self, node, is_crossing, trigger_count, trigger_timestamp: int, trigger_rssi: int, trigger_lifetime: int):
+    def process_enter_trigger(self, node, trigger_count, trigger_timestamp: int, trigger_rssi: int, trigger_lifetime: int):
         '''Parameter order must match order in packet'''
-        logger.debug("{}: node={}, trigger_count={}, trigger_timestamp={}, trigger_rssi={}, trigger_lifetime={}".format("ENTER" if is_crossing else "EXIT", node, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime))
-        if is_crossing:
-            if node.enter_count is not None and self.lap_count_change(trigger_count, node.enter_count) > 1:
-                logger.warning("Missed enter on node {}!!! (count was {}, now is {})".format(node, node.enter_count, trigger_count))
-            node.enter_count = trigger_count
-        else:
-            if node.exit_count is not None and self.lap_count_change(trigger_count, node.exit_count) > 1:
-                logger.warning("Missed exit on node {}!!! (count was {}, now is {})".format(node, node.exit_count, trigger_count))
-            node.exit_count = trigger_count
+        logger.debug("ENTER: node={}, trigger_count={}, trigger_timestamp={}, trigger_rssi={}, trigger_lifetime={}".format(node, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime))
+        if node.enter_count is not None and self.lap_count_change(trigger_count, node.enter_count) > 1:
+            logger.warning("Missed enter on node {}!!! (count was {}, now is {})".format(node, node.enter_count, trigger_count))
+        node.enter_count = trigger_count
 
         # NB: crossing race times are relative to the race start time
         crossing_race_time = trigger_timestamp - self.race_start_time_ms
         if crossing_race_time < 0:
-            logger.warning("Node {}: {} crossing before race start: {} < {}".format(node, "Enter" if is_crossing else "Exit", trigger_timestamp, self.race_start_time_ms))
+            logger.warning("Node {}: Enter crossing before race start: {} < {}".format(node, trigger_timestamp, self.race_start_time_ms))
 
-        if is_crossing:
-            node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
-            node.enter_at_sample = RssiSample(crossing_race_time, trigger_rssi)
-            self._notify_enter_triggered(node, crossing_race_time, trigger_rssi, trigger_lifetime)
-        else:
-            node.exit_at_sample = RssiSample(crossing_race_time, trigger_rssi)
-            self._notify_exit_triggered(node, crossing_race_time, trigger_rssi, trigger_lifetime)
+        node.pass_crossing_flag = True  # will be cleared when lap-pass is processed
+        node.enter_at_sample = RssiSample(crossing_race_time, trigger_rssi)
+        self._notify_enter_triggered(node, crossing_race_time, trigger_rssi, trigger_lifetime)
+
+    def process_exit_trigger(self, node, trigger_count, trigger_timestamp: int, trigger_rssi: int, trigger_lifetime: int):
+        '''Parameter order must match order in packet'''
+        logger.debug("EXIT: node={}, trigger_count={}, trigger_timestamp={}, trigger_rssi={}, trigger_lifetime={}".format(node, trigger_count, trigger_timestamp, trigger_rssi, trigger_lifetime))
+        if node.exit_count is not None and self.lap_count_change(trigger_count, node.exit_count) > 1:
+            logger.warning("Missed exit on node {}!!! (count was {}, now is {})".format(node, node.exit_count, trigger_count))
+        node.exit_count = trigger_count
+
+        # NB: crossing race times are relative to the race start time
+        crossing_race_time = trigger_timestamp - self.race_start_time_ms
+        if crossing_race_time < 0:
+            logger.warning("Node {}: Exit crossing before race start: {} < {}".format(node, trigger_timestamp, self.race_start_time_ms))
+
+        node.exit_at_sample = RssiSample(crossing_race_time, trigger_rssi)
+        self._notify_exit_triggered(node, crossing_race_time, trigger_rssi, trigger_lifetime)
 
     def process_lap_stats(self, node, pass_count, pass_timestamp: int, pass_peak_rssi: int, pass_nadir_rssi: int):
         '''Parameter order must match order in packet'''
@@ -236,9 +242,9 @@ class BaseHardwareInterface:
             node.pass_peak_rssi = pass_peak_rssi
         if pass_nadir_rssi is not None:
             node.pass_nadir_rssi = pass_nadir_rssi
-        if node.enter_count == node.pass_count and node.enter_at_sample.timestamp > pass_timestamp:
+        if node.enter_count == node.pass_count and node.enter_at_sample is not None and node.enter_at_sample.timestamp > pass_timestamp:
             logger.warning("Node {}: Enter timestamp {} is after pass timestamp {}!!! ".format(node, node.enter_at_sample.timestamp, pass_timestamp))
-        if node.exit_count == node.pass_count and node.exit_at_sample.timestamp < pass_timestamp:
+        if node.exit_count == node.pass_count and node.exit_at_sample is not None and node.exit_at_sample.timestamp < pass_timestamp:
             logger.warning("Node {}: Exit timestamp {} is before pass timestamp {}!!! ".format(node, node.exit_at_sample.timestamp, pass_timestamp))
         node.is_crossing = False
         node.enter_at_sample = None

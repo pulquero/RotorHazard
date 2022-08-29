@@ -240,7 +240,7 @@ class ServerTest(unittest.TestCase):
         enter_ts = ms_counter()
         server.INTERFACE.is_new_lap(node, 0, 20, 3, True)
         self.assertEqual(node.pass_count, 3)
-        server.INTERFACE.process_crossing(node, True, 4, enter_ts, 60, 6)
+        server.INTERFACE.process_enter_trigger(node, 4, enter_ts, 60, 6)
         self.assertEqual(node.enter_at_sample, (enter_ts, 60))
         resp = self.wait_for_response('node_crossing_change', 0.5)
         self.assertEqual(resp['node_index'], node_index)
@@ -249,7 +249,7 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['rssi'], 60)
         pass_ts = enter_ts + 1
         exit_ts = pass_ts + 1
-        server.INTERFACE.process_crossing(node, False, 4, exit_ts, 58, 5)
+        server.INTERFACE.process_exit_trigger(node, 4, exit_ts, 58, 5)
         self.assertEqual(node.exit_at_sample, (exit_ts, 58))
         server.INTERFACE.process_lap_stats(node, 4, pass_ts, 65, 5)
         self.assertEqual(node.pass_count, 4)

@@ -136,9 +136,10 @@ class MockInterface(BaseHardwareInterface):
 
                         if cmd == READ_RSSI:
                             self.is_new_lap(node, *cmd_values)
-                        elif cmd == READ_ENTER_STATS or cmd == READ_EXIT_STATS:
-                            is_crossing = (cmd == READ_ENTER_STATS)
-                            self.processing_crossing(node, is_crossing, *cmd_values)
+                        elif cmd == READ_ENTER_STATS:
+                            self.process_enter_trigger(node, *cmd_values)
+                        elif cmd == READ_EXIT_STATS:
+                            self.process_exit_trigger(node, *cmd_values)
                         elif cmd == READ_LAP_STATS:
                             self.process_lap_stats(node, *cmd_values)
                         elif cmd == READ_ANALYTICS:
