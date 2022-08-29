@@ -142,7 +142,7 @@ class ChorusInterface(BaseHardwareInterface):
                 node.node_peak_rssi = max(rssi, node.node_peak_rssi)
                 node.node_nadir_rssi = min(rssi, node.node_nadir_rssi)
                 filtered_ts, filtered_rssi = node.history_filter.filter(ts_ms, rssi)
-                self.append_history(node, filtered_ts, filtered_rssi)
+                self.append_rssi_history(node, filtered_ts, filtered_rssi)
             elif cmd == 'v':
                 node.manager.voltage = int(data[3:7], 16)
 

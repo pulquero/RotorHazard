@@ -8,7 +8,7 @@ import gevent.lock
 from typing import List, Optional
 from rh.util import ms_counter
 from . import pack_8, unpack_8, pack_16, unpack_16, pack_32, unpack_32, \
-                        calculate_checksum, RssiHistory, RssiSample, LifetimeSample
+                        calculate_checksum, SampleHistory, RssiSample, LifetimeSample
 
 MAX_RETRY_COUNT = 4 # Limit of I/O retries
 
@@ -241,9 +241,7 @@ class Node(CommandsWithRetry):
 
     def _init(self):
         self.pass_history: List[RssiSample] = []
-        self.history = RssiHistory()  # clear race history
-        self.used_history_count = 0
-        self.empty_history_count = 0
+        self.history = SampleHistory()  # clear race history
         self.pass_count = None
         self.pass_peak_rssi = 0
         self.pass_nadir_rssi = self.manager.max_rssi_value

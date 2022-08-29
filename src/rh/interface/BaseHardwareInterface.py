@@ -109,6 +109,7 @@ class BaseHardwareInterface:
         self.listener.on_rssi_sample(node, ts, rssi)
 
     def _notify_lifetime_sample(self, node, ts: int, lifetime: int):
+        self.append_lifetime_history(node, ts, lifetime)
         self.listener.on_lifetime_sample(node, ts, lifetime)
 
     def _notify_enter_triggered(self, node, trigger_ts: int, trigger_rssi: int, trigger_lifetime: int):
@@ -121,7 +122,7 @@ class BaseHardwareInterface:
         self.listener.on_pass(node, lap_ts_ms, lap_source, pass_rssi)
 
     def _notify_extremum_history(self, node, extremum_timestamp, extremum_rssi, extremum_duration):
-        self.append_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
+        self.append_rssi_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
         self.listener.on_extremum_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
 
     def _notify_frequency_changed(self, node):
@@ -274,17 +275,16 @@ class BaseHardwareInterface:
         if extremum_rssi is not None and extremum_timestamp is not None and extremum_duration is not None:
             self._notify_extremum_history(node, extremum_timestamp, extremum_rssi, extremum_duration)
 
-    def append_history(self, node, timestamp: int, rssi: int, duration=0):
+    def append_rssi_history(self, node, timestamp: int, rssi: int, duration=0):
         # append history data (except when race is over)
         if self.is_racing:
             node.history.append(timestamp, rssi)
             if duration > 0:
                 node.history.append(timestamp + duration, rssi)
 
-            if rssi is not None:
-                node.used_history_count += 1
-            else:
-                node.empty_history_count += 1
+    def append_lifetime_history(self, node, timestamp: int, lifetime: int):
+        if self.is_racing:
+            node.lifetime_history.append(timestamp, lifetime)
 
     def process_capturing(self, node):
         # check if capturing enter-at level for node

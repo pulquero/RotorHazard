@@ -2554,6 +2554,10 @@ def on_save_laps():
                     'laps': RACE.node_laps[seat],
                     'splits': RACE.node_splits[seat]
                     }
+                if hasattr(node, 'lifetime_history'):
+                    lifetime_times, lifetime_values = node.lifetime_history.get()
+                    race_data[seat]['lifetime_values'] = json.dumps(lifetime_values)
+                    race_data[seat]['lifetime_times'] = json.dumps(lifetime_times)
 
     RHDATA.add_race_data(race_data)
 
@@ -3561,6 +3565,8 @@ def emit_race_list(**params):
                         'node_index': pilotrace.node_index,
                         'history_values': json.loads(pilotrace.history_values),
                         'history_times': json.loads(pilotrace.history_times),
+                        'lifetime_values': json.loads(pilotrace.lifetime_values),
+                        'lifetime_times': json.loads(pilotrace.lifetime_times),
                         'laps': laps,
                         'enter_at': pilotrace.enter_at,
                         'exit_at': pilotrace.exit_at,
