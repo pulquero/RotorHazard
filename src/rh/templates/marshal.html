@@ -53,6 +53,11 @@
 			strokeStyle:'hsl(214, 53%, 60%)',
 			fillStyle:'hsla(214, 53%, 60%, 0.4)'
 		});
+		var ph_series = new TimeSeries();
+		graph.addTimeSeries(ph_series, {lineWidth:1.7,
+			strokeStyle:'hsl(340, 53%, 60%)',
+			fillStyle:'hsla(340, 53%, 60%, 0.4)'
+		});
 		var lap_marker_series = new TimeSeries();
 		graph.addTimeSeries(lap_marker_series, {lineWidth:1.7,
 			strokeStyle:'none',
@@ -252,14 +257,19 @@
 			// load current race data
 			current_race_data = jQuery.extend(true, {}, race_list.heats[heat].rounds[round].pilotraces[pilot]);
 			current_race_data.pilotrace_index = pilot;
+			// translate to s
+			for (var i in current_race_data.history_times) {
+				current_race_data.history_times[i] = current_race_data.history_times[i] / 1000
+			}
 			// fill current data with race meta
 			current_race_data.round_id = round;
 			current_race_data.heat_id = heat;
 			current_race_data.race_id = race_list.heats[heat].rounds[round].race_id;
 			current_race_data.class_id = race_list.heats[heat].rounds[round].class_id;
 			current_race_data.format_id = race_list.heats[heat].rounds[round].format_id;
-			current_race_data.start_time = race_list.heats[heat].rounds[round].start_time;
+			current_race_data.start_time = race_list.heats[heat].rounds[round].start_time / 1000;
 			current_race_data.start_time_formatted = race_list.heats[heat].rounds[round].start_time_formatted;
+			current_race_data.ph_values = race_list.heats[heat].rounds[round].pilotraces[pilot].ph_values;
 
 			if (current_race_data.history_times.length) {
 				current_race_data.end_time = current_race_data.history_times[current_race_data.history_times.length - 1];
@@ -285,12 +295,15 @@
 
 			// prepare graph
 			rssi_series.data = [];
+			ph_series.data = [];
 			for (idx in current_race_data.history_times) {
 				var value = current_race_data.history_times[idx];
 				if (value == lastValue) {
 					rssi_series.append(current_race_data.history_times[idx] + 0.001, current_race_data.history_values[idx]);
+					ph_series.append(current_race_data.history_times[idx] + 0.001, current_race_data.ph_values[idx] + graph.options.minValue);
 				} else {
 					rssi_series.append(current_race_data.history_times[idx], current_race_data.history_values[idx]);
+					ph_series.append(current_race_data.history_times[idx], current_race_data.ph_values[idx] + graph.options.minValue);
 				}
 				var lastValue = value;
 			}

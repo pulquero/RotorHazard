@@ -1,7 +1,7 @@
 '''RotorHazard server script'''
 
 RELEASE_VERSION = "4.0.0-dev.1"  # Public release version code
-SERVER_API = 32+8  # Server API version
+SERVER_API = 32+9  # Server API version
 NODE_API_SUPPORTED = 37  # Minimum supported node version
 NODE_API_BEST = 37  # Most recent node API
 JSON_API = 3  # JSON API version
@@ -3530,6 +3530,7 @@ def get_splits(active_race, node_idx, lap_id, lapCompleted):
                 splits.append(split_payload)
     return splits
 
+import rh.util.persistent_homology as ph
 
 def emit_race_list(**params):
     '''Emits race listing'''
@@ -3558,15 +3559,20 @@ def emit_race_list(**params):
                     else:
                         nodepilot = None
 
+                    ph_history_size=13
+                    rssis_values = json.loads(pilotrace.history_values)
+                    ph_values = [cc.lifetime() if cc is not None else 0 for cc in [ph.calculateRealtimePeakPersistentHomology(rssis_values[:i+1], ph_history_size) for i in range(len(rssis_values))]]
+                    
                     pilotraces.append({
                         'pilotrace_id': pilotrace.id,
                         'callsign': nodepilot,
                         'pilot_id': pilotrace.pilot_id,
                         'node_index': pilotrace.node_index,
-                        'history_values': json.loads(pilotrace.history_values),
+                        'history_values': rssis_values,
                         'history_times': json.loads(pilotrace.history_times),
-                        'lifetime_values': json.loads(pilotrace.lifetime_values),
-                        'lifetime_times': json.loads(pilotrace.lifetime_times),
+                        'lifetime_values': json.loads(pilotrace.lifetime_values) if pilotrace.lifetime_values else None,
+                        'lifetime_times': json.loads(pilotrace.lifetime_times) if pilotrace.lifetime_times else None,
+                        'ph_values': ph_values, 
                         'laps': laps,
                         'enter_at': pilotrace.enter_at,
                         'exit_at': pilotrace.exit_at,
