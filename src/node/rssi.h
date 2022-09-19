@@ -259,7 +259,7 @@ private:
 #endif
     bool checkForCrossing_old(rssi_t enterThreshold, rssi_t exitThreshold);
 public:
-    MedianFilter<rssi_t, 5, 0> medianFilter;
+    MedianFilter<rssi_t, 11, 0> medianFilter;
     Filter<rssi_t>& defaultFilter = medianFilter;
     NoFilter<rssi_t> noFilter;
 
