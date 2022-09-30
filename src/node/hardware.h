@@ -18,7 +18,10 @@ private:
 protected:
     SPI_IMPL spi;
 #ifdef LED_BUILTIN
-    bool currentStatusLedFlag = false;
+    bool currentLedState = false;
+#endif
+#ifdef USE_BUZZER
+    bool currentBuzzerState = false;
 #endif
     void initSerial(HardwareSerial& ser, unsigned long baudRate) {
         ser.begin(baudRate);  // Start serial interface
@@ -73,18 +76,40 @@ public:
 #ifdef LED_BUILTIN
         if (onFlag)
         {
-            if (!currentStatusLedFlag)
+            if (!currentLedState)
             {
-                currentStatusLedFlag = true;
+                currentLedState = true;
                 digitalWrite(LED_BUILTIN, ledOnValue);
             }
         }
         else
         {
-            if (currentStatusLedFlag)
+            if (currentLedState)
             {
-                currentStatusLedFlag = false;
+                currentLedState = false;
                 digitalWrite(LED_BUILTIN, ledOffValue);
+            }
+        }
+#endif
+    }
+    virtual void setBuzzer(bool onFlag) {
+#ifdef USE_BUZZER
+        if (onFlag)
+        {
+            if (!currentBuzzerState)
+            {
+                currentBuzzerState = true;
+                pinMode(BUZZER_PIN, OUTPUT);
+                digitalWrite(BUZZER_PIN, BUZZER_ON_VALUE);
+            }
+        }
+        else
+        {
+            if (currentBuzzerState)
+            {
+                currentBuzzerState = false;
+                digitalWrite(BUZZER_PIN, BUZZER_OFF_VALUE);
+                pinMode(BUZZER_PIN, INPUT);
             }
         }
 #endif

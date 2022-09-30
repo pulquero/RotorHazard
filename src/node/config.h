@@ -126,6 +126,13 @@
 #define RSSI_HISTORY
 #endif
 
+#if TARGET == STM32_TARGET || TARGET == SIL_TARGET
+#define USE_BUZZER
+#define BUZZER_ON_VALUE LOW
+#define BUZZER_OFF_VALUE HIGH
+#define BUZZER_PIN PA8
+#endif
+
 #if TARGET == AVR_TARGET
 #define USE_I2C
 #endif

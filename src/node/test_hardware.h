@@ -27,7 +27,7 @@ public:
         isRxInit[nIdx] = true;
     }
     void setStatusLed(bool onFlag) {
-        bool currentFlag = currentStatusLedFlag;
+        bool currentFlag = currentLedState;
         Hardware::setStatusLed(onFlag);
         if (onFlag != currentFlag) {
             printf("Status LED changed to %d\n", onFlag);
