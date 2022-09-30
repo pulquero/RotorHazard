@@ -34,11 +34,23 @@ public:
         printf("Initializing settings for RX module %d\n", nIdx);
     }
     void setStatusLed(bool onFlag) {
-        bool currentFlag = currentStatusLedFlag;
+        bool currentFlag = currentLedState;
         Hardware::setStatusLed(onFlag);
         if (onFlag != currentFlag) {
             if (onFlag) {
                 printf("\e[1G\e[1;31m * ");
+            } else {
+                printf("\e[2K");
+            }
+            printf("\e[0m");
+        }
+    }
+    void setBuzzer(bool onFlag) {
+        bool currentFlag = currentBuzzerState;
+        Hardware::setBuzzer(onFlag);
+        if (onFlag != currentFlag) {
+            if (onFlag) {
+                printf("\e[1G\e[1;31m buzz ");
             } else {
                 printf("\e[2K");
             }

@@ -72,6 +72,10 @@ void setup()
 
 static utime_t previousTick = 0;
 static uint_fast8_t currentStatusFlags = 0;
+#ifdef USE_BUZZER
+static bool waitingForFirstComms = true;
+static int buzzerBeepDurationCounter = 0;
+#endif
 
 // Main loop
 void loop()
@@ -91,10 +95,11 @@ void loop()
             cmdStatusFlags = NO_STATUS;
         }
 
+        const bool isPolling = (currentStatusFlags & POLLING);
         // allow READ_LAP_STATS command to activate operations
         //  so they will resume after node or I2C bus reset
         RssiNode& cmdNode = rssiRxs.getRssiNode(cmdRssiNodeIndex);
-        if (!cmdNode.active && (currentStatusFlags & POLLING))
+        if (!cmdNode.active && isPolling)
         {
             cmdNode.active = true;
         }
@@ -109,10 +114,24 @@ void loop()
         if (ms <= 1000)
         {  //flash three times during first second of running
             int ti = (int)(ms / 100);
-            hardware.setStatusLed(ti != 3 && ti != 7);
+            bool onFlag = (ti != 3 && ti != 7);
+            hardware.setStatusLed(onFlag);
+#ifdef USE_BUZZER
+            hardware.setBuzzer(onFlag);
+#endif
         }
         else if ((ms & 0xF) == 0)
         {  //only run every 20ms so flashes last longer (brighter)
+
+#ifdef USE_BUZZER
+            if (buzzerBeepDurationCounter > 0)
+            {
+                if (--buzzerBeepDurationCounter <= 0)
+                {
+                    hardware.setBuzzer(false);
+                }
+            }
+#endif
 
             // if crossing or communications activity then LED on
             if (crossingFlag)
@@ -122,6 +141,16 @@ void loop()
             else if (currentStatusFlags & COMM_ACTIVITY)
             {
                 hardware.setStatusLed(true);
+
+#ifdef USE_BUZZER
+                if (waitingForFirstComms && isPolling)
+                {
+                    waitingForFirstComms = false;
+                    hardware.setBuzzer(true);
+                    buzzerBeepDurationCounter = 1;
+                }
+#endif
+
                 currentStatusFlags &= ~COMM_ACTIVITY;  // clear COMM_ACTIVITY flag
             }
             else
