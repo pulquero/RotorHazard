@@ -200,8 +200,8 @@ class Results:
                 node_index = 0
                 laps = []
                 for node_index, node_pilot in raceObj.node_pilots.items():
-                    if node_pilot and node_pilot.id == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_active_laps()):
-                        laps = raceObj.get_active_laps()[node_index]
+                    if node_pilot and node_pilot.id == pilot.id and node_index < raceObj.num_nodes and len(raceObj.get_valid_laps()):
+                        laps = raceObj.get_valid_laps()[node_index]
                         found_pilot = True
                         break
     
@@ -1051,9 +1051,9 @@ class Results:
                     max_ttc = 0
 
                     race_duration_ms = secs_to_millis(race_format.race_time_sec + race_format.lap_grace_sec)
-                    for node in raceObj.node_laps:
-                        if len(raceObj.node_laps[node]) > 0:
-                            most_recent_lap = raceObj.node_laps[node][-1]['lap_time_stamp']
+                    for node in raceObj.node_passes:
+                        if len(raceObj.node_passes[node]) > 0:
+                            most_recent_lap = raceObj.node_passes[node][-1]['lap_time_stamp']
                             time_to_complete = fast_lap - (race_duration_ms - most_recent_lap)
                             max_ttc = max(max_ttc, time_to_complete)
 
@@ -1093,8 +1093,8 @@ class Results:
 
                 if fast_consecutives and fast_consecutives > 0: # must have recorded time (otherwise impossible to set bounds)
                     max_node_consideration = 0
-                    for node in raceObj.node_laps:
-                        laps = raceObj.node_laps[node]
+                    for node in raceObj.node_passes:
+                        laps = raceObj.node_passes[node]
                         if len(laps) >= 2:
                             last_2_laps = laps[-1]['lap_time'] + laps[-2]['lap_time']
                             max_node_consideration = max(max_node_consideration, (fast_consecutives - last_2_laps))
@@ -1395,11 +1395,11 @@ class Results:
                             }
 
                         race_duration_ms = secs_to_millis(race_format.race_time_sec + race_format.lap_grace_sec)
-                        for node in raceObj.node_laps:
-                            if len(raceObj.node_laps[node]) > 0:
+                        for node in raceObj.node_passes:
+                            if len(raceObj.node_passes[node]) > 0:
                                 team = raceObj.node_pilots[node].team
                                 if team is not None:
-                                    most_recent_lap = raceObj.node_laps[node][-1]['lap_time_stamp']
+                                    most_recent_lap = raceObj.node_passes[node][-1]['lap_time_stamp']
                                     spent_time = race_duration_ms - most_recent_lap
                                     team_laps[team]['spent_time'] += spent_time
 
@@ -1453,10 +1453,10 @@ class Results:
                             'members': line['members']
                         }
 
-                    for node in raceObj.node_laps:
+                    for node in raceObj.node_passes:
                         team = raceObj.node_pilots[node].team
                         if team is not None:
-                            laps = raceObj.node_laps[node]
+                            laps = raceObj.node_passes[node]
                             if len(laps) >= 2:
                                 last_2_laps = laps[-1]['lap_time'] + laps[-2]['lap_time']
                                 team_laps[team]['time'] += last_2_laps

@@ -2198,7 +2198,7 @@ def on_stage_race():
         })  # Announce staging with chosen delay
 
     else:
-        logger.info("Attempted to stage race while status is not 'ready'")
+        logger.warning("Attempted to stage race while status is not 'ready': status is {}".format(RACE.race_status))
 
 
 def autoUpdateCalibration():
@@ -2507,8 +2507,8 @@ def on_save_laps():
 
     # Determine if race is empty
     # race_has_laps = False
-    # for node_index in RACE.node_laps:
-    #     if RACE.node_laps[node_index]:
+    # for node_index in RACE.node_passes:
+    #     if RACE.node_passes[node_index]:
     #         race_has_laps = True
     #         break
     #
@@ -2551,7 +2551,7 @@ def on_save_laps():
                     'history_times': json.dumps(history_times),
                     'enter_at': node.enter_at_level,
                     'exit_at': node.exit_at_level,
-                    'laps': RACE.node_laps[seat],
+                    'laps': RACE.node_passes[seat],
                     'splits': RACE.node_splits[seat]
                     }
                 if hasattr(node, 'lifetime_history'):
@@ -2571,7 +2571,7 @@ def on_save_laps():
 
     history_times, history_values = INTERFACE.nodes[node_index].history.get()
     gevent.spawn(INTERFACE.calibrate_nodes, RACE.start_time_ms,
-                 {node_idx: (laps, history_times, history_values) for node_idx,laps in RACE.node_laps.items()}
+                 {node_idx: (laps, history_times, history_values) for node_idx,laps in RACE.node_passes.items()}
                  )
 
     Events.trigger(Evt.LAPS_SAVE, {
@@ -2880,13 +2880,13 @@ def on_delete_lap(data):
         logger.error("Bad parameter in 'on_delete_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
         return
 
-    RACE.node_laps[node_index][lap_index]['deleted'] = True
-    RACE.node_laps[node_index][lap_index]['late_lap'] = False
+    RACE.node_passes[node_index][lap_index]['deleted'] = True
+    RACE.node_passes[node_index][lap_index]['late_lap'] = False
 
-    time = RACE.node_laps[node_index][lap_index]['lap_time_stamp']
+    time = RACE.node_passes[node_index][lap_index]['lap_time_stamp']
 
     lap_number = 0
-    for lap in RACE.node_laps[node_index]:
+    for lap in RACE.node_passes[node_index]:
         if not lap['deleted']:
             lap['lap_number'] = lap_number
             lap_number += 1
@@ -2895,7 +2895,7 @@ def on_delete_lap(data):
 
     db_last = False
     db_next = False
-    for lap in RACE.node_laps[node_index]:
+    for lap in RACE.node_passes[node_index]:
         if not lap['deleted']:
             if lap['lap_time_stamp'] < time:
                 db_last = lap
@@ -2940,14 +2940,14 @@ def on_restore_deleted_lap(data):
         logger.error("Bad parameter in 'on_restore_deleted_lap()':  node_index={0}, lap_index={1}".format(node_index, lap_index))
         return
 
-    lap_obj = RACE.node_laps[node_index][lap_index]
+    lap_obj = RACE.node_passes[node_index][lap_index]
 
     lap_obj['deleted'] = False
     lap_obj['late_lap'] = False
 
     lap_number = 0  # adjust lap numbers and times as needed
     last_lap_ts = 0
-    for idx, lap in enumerate(RACE.node_laps[node_index]):
+    for idx, lap in enumerate(RACE.node_passes[node_index]):
         if not lap['deleted']:
             if idx >= lap_index:
                 lap['lap_number'] = lap_number
@@ -3435,7 +3435,7 @@ def build_laps_list(active_race=RACE):
         fastest_lap_time = float("inf")
         fastest_lap_index = None
         last_lap_id = -1
-        for idx, lap in enumerate(active_race.node_laps[node_idx]):
+        for idx, lap in enumerate(active_race.node_passes[node_idx]):
             if (not lap['deleted']) or lap.get('late_lap', False):
                 if not lap.get('late_lap', False):
                     last_lap_id = lap_number = lap['lap_number']
@@ -4436,11 +4436,11 @@ def pass_record_callback(node, lap_race_time_ms: int, source):
                     if node.start_thresh_lower_flag:
                         node.start_thresh_lower_time_ms = ms_counter()
 
-                    lap_number = len(RACE.get_active_laps()[seat])
+                    lap_number = len(RACE.get_valid_laps()[seat])
 
                     if lap_number: # This is a normal completed lap
                         # Find the time stamp of the last lap completed (including "late" laps for timing)
-                        last_lap = RACE.get_active_laps(True)[seat][-1]
+                        last_lap = RACE.get_valid_laps(True)[seat][-1]
                         last_lap_time_stamp = last_lap['lap_time_stamp']
 
                         # New lap time is the difference between the current time stamp and the last
@@ -4476,7 +4476,7 @@ def pass_record_callback(node, lap_race_time_ms: int, source):
                             node.under_min_lap_count += 1
                             logger.info('Pass record under lap minimum ({3}): Seat={0}, Lap={1}, LapTime={2}, Count={4}' \
                                        .format(seat+1, lap_number, lap_time_fmtstr, min_lap, node.under_min_lap_count))
-                            if min_lap_behavior != 0:  # if behavior is 'Discard New Short Laps'
+                            if min_lap_behavior == RHRace.MinLapBehavior.DISCARD_SHORT_LAPS:
                                 lap_ok_flag = False
 
                         if race_format.lap_grace_sec and lap_race_time_ms > secs_to_millis(race_format.race_time_sec) and lap_race_time_ms <= secs_to_millis(race_format.race_time_sec + race_format.lap_grace_sec):
@@ -4507,7 +4507,7 @@ def pass_record_callback(node, lap_race_time_ms: int, source):
                             'deleted': lap_late_flag,  # delete if lap pass is after race winner declared
                             'late_lap': lap_late_flag
                         }
-                        RACE.add_new_lap(seat, lap_data)
+                        RACE.add_new_pass(seat, lap_data)
 
                         Events.trigger(Evt.RACE_LAP_RECORDED, {
                             'node_index': seat,
@@ -4557,7 +4557,7 @@ def pass_record_callback(node, lap_race_time_ms: int, source):
 
                     else:
                         # record lap as 'deleted'
-                        RACE.add_new_lap(seat, {
+                        RACE.add_new_pass(seat, {
                             'lap_number': lap_number,
                             'lap_time_stamp': lap_race_time_ms,
                             'lap_time': lap_time_ms,
@@ -4616,7 +4616,7 @@ def add_split(location_id, seat, split_ts, track):
         
         if pilot_id != RHUtils.PILOT_ID_NONE:
 
-            act_laps_list = RACE.get_active_laps()[seat]
+            act_laps_list = RACE.get_valid_laps()[seat]
             lap_count = max(0, len(act_laps_list) - 1)
 
             # get timestamp for last lap pass (including lap 0)

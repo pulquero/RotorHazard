@@ -153,7 +153,7 @@ def createBlueprint(RESULTS, RACE, serverInfo, getCurrentProfile):
         results = RESULTS.calc_current_race_leaderboard(RACE, getCurrentProfile())
 
         payload = {
-            "raw_laps": RACE.node_laps,
+            "raw_laps": RACE.node_passes,
             "leaderboard": results
         }
 

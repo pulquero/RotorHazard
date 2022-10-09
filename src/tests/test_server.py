@@ -55,7 +55,7 @@ class ServerTest(unittest.TestCase):
     def get_responses(self, *events):
         responses = self.client.get_received()
         evt_resps = filter(lambda resp: resp['name'] in events, responses)
-        return [resp['args'][0] for resp in evt_resps]
+        return [{resp['name']: resp['args'][0]} for resp in evt_resps]
 
     def wait_for_response(self, event, max_wait, filter_func=None):
         expiry_time = monotonic() + max_wait
@@ -94,8 +94,8 @@ class ServerTest(unittest.TestCase):
         server.SENSORS[0].update()
         server.emit_environmental_data()
         resps = self.get_responses('environmental_data', 'priority_message')
-        self.assertEqual(resps[0][0][expected_name]['counter']['value'], 1)
-        self.assertEqual(resps[1]['key'], expected_name+' counter')
+        self.assertEqual(resps[0]['environmental_data'][0][expected_name]['counter']['value'], 1)
+        self.assertEqual(resps[1]['priority_message']['key'], expected_name+' counter')
 
     def test_add_pilot(self):
         self.client.emit('load_data', {'load_types': ['pilot_data']})
@@ -235,6 +235,7 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['heats'][1]['class_id'], data['class'])
 
     def test_node_crossing(self):
+        server.INTERFACE.race_start_time_ms = 0
         node_index = 1
         node = server.INTERFACE.nodes[node_index]
         enter_ts = ms_counter()
@@ -294,7 +295,7 @@ class ServerTest(unittest.TestCase):
 
         gevent.sleep(1)
 
-        # simulate a lap
+        # test: simulate a lap
         server.INTERFACE.simulate_lap(node_index)
         self.assertIsNone(node.pass_count)
         resp = self.wait_for_response('pass_record', 1)
@@ -306,7 +307,7 @@ class ServerTest(unittest.TestCase):
 
         gevent.sleep(1)
 
-        # hardware lap
+        # test: hardware lap
         now = ms_counter()
         server.INTERFACE.process_lap_stats(node, 1, now, 89, 43)
         self.assertEqual(node.pass_count, 1)
@@ -316,6 +317,77 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(resp['timestamp'], server.PROGRAM_START.monotonic_to_epoch_millis(now))
 
         self.client.emit('stop_race')
+        node_laps = server.RACE.node_passes[node_index]
+        self.assertEqual(len(node_laps), 2)
+        self.client.emit('discard_laps')
+
+    def test_min_lap(self):
+        node_index = 1
+        min_lap = 1
+        node = server.INTERFACE.nodes[node_index]
+        self.client.emit('alter_heat', {'heat':1, 'node':node_index, 'pilot':1})
+        self.client.emit('set_race_format', {'race_format': 5})
+        self.client.emit('set_min_lap', {'min_lap': min_lap})
+        resp = self.get_response('min_lap')
+        self.assertEqual(resp['min_lap'], min_lap)
+        self.client.emit('set_min_lap_behavior', {'min_lap_behavior': RHRace.MinLapBehavior.DISCARD_SHORT_LAPS})
+        resp = self.get_response('min_lap')
+        self.assertEqual(resp['min_lap_behavior'], RHRace.MinLapBehavior.DISCARD_SHORT_LAPS)
+        self.client.emit('stage_race')
+        self.get_response('stage_ready')
+        resp = self.wait_for_response('race_status', 2)
+        self.assertEqual(resp['race_status'], RHRace.RaceStatus.RACING)
+
+        gevent.sleep(1)
+
+        # initialize hardware lap stats
+        server.INTERFACE.is_new_lap(node, 100, 20, 0, False)
+        self.assertEqual(node.pass_count, 0)
+
+        gevent.sleep(1)
+
+        # pass start line
+        now = ms_counter()
+        server.INTERFACE.process_lap_stats(node, 1, now, 89, 43)
+        self.assertEqual(node.pass_count, 1)
+        self.assertEqual(node.pass_peak_rssi, 89)
+
+        resp = self.wait_for_response('pass_record', 1)
+        self.assertEqual(resp['node'], node_index)
+        self.assertEqual(resp['timestamp'], server.PROGRAM_START.monotonic_to_epoch_millis(now))
+
+        # end of first lap - min lap
+        now = ms_counter()
+        server.INTERFACE.process_lap_stats(node, 2, now, 86, 42)
+        self.assertEqual(node.pass_count, 2)
+        self.assertEqual(node.pass_peak_rssi, 86)
+
+        gevent.sleep(min_lap)
+        self.assertEqual(len(server.RACE.get_valid_laps()[node_index]), 1)
+
+        # end of 2nd lap
+        now = ms_counter()
+        server.INTERFACE.process_lap_stats(node, 3, now, 87, 45)
+        self.assertEqual(node.pass_count, 3)
+        self.assertEqual(node.pass_peak_rssi, 87)
+
+        gevent.sleep(1)
+        resps = self.get_responses('pass_record', 'phonetic_data')
+        [evt] = filter(lambda evt: 'pass_record' in evt, resps)
+        resp = evt['pass_record']
+        self.assertEqual(resp['node'], node_index)
+        self.assertEqual(resp['timestamp'], server.PROGRAM_START.monotonic_to_epoch_millis(now))
+        self.assertEqual(len(server.RACE.get_valid_laps()[node_index]), 2)
+        [evt] = filter(lambda evt: 'phonetic_data' in evt, resps)
+        resp = evt['phonetic_data']
+        self.assertEqual(resp['lap'], 1)
+
+        self.client.emit('stop_race')
+        node_laps = server.RACE.node_passes[node_index]
+        self.assertEqual(len(node_laps), 3)
+        self.assertEqual(node_laps[1]['deleted'], True)
+        self.assertEqual(node_laps[2]['deleted'], False)
+        self.client.emit('discard_laps')
 
 
 # scanner

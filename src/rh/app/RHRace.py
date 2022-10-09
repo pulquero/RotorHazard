@@ -26,7 +26,7 @@ class RHRace():
         self.start_time_ms = 0  # monotonic
         self.start_time_epoch_ms = 0  # ms since 1970-01-01
         self.start_time_delay_secs = 0  # random-length race-start delay
-        self.node_laps = {}  # current race lap objects, by node
+        self.node_passes = {}  # current race lap objects, by node
         self.node_splits = {}
         self.node_has_finished = {}
         self.any_races_started = False
@@ -80,7 +80,7 @@ class RHRace():
         return self.team_result_fn(self)
 
     def reset(self):
-        self.node_laps = {idx: [] for idx in range(self._num_nodes)}
+        self.node_passes = {idx: [] for idx in range(self._num_nodes)}
         self.node_splits = {idx: [] for idx in range(self._num_nodes)}
         self.modification_count += 1
 
@@ -114,25 +114,25 @@ class RHRace():
     def check_all_nodes_finished(self):
         return False not in self.node_has_finished.values()
 
-    def add_new_lap(self, node_index, lap_data):
-        self.node_laps[node_index].append(lap_data)
+    def add_new_pass(self, node_index, lap_data):
+        self.node_passes[node_index].append(lap_data)
         self.modification_count += 1
 
-    def get_active_laps(self, late_lap_flag=False):
-        # return active (non-deleted) laps objects
+    def get_valid_laps(self, late_lap_flag=False):
+        # return valid (non-deleted) lap objects
         filtered = {}
         if not late_lap_flag:
-            for node_index in self.node_laps:
-                filtered[node_index] = list(filter(lambda lap : lap['deleted'] == False, self.node_laps[node_index]))
+            for node_index in self.node_passes:
+                filtered[node_index] = list(filter(lambda lap : lap['deleted'] == False, self.node_passes[node_index]))
         else:
-            for node_index in self.node_laps:
+            for node_index in self.node_passes:
                 filtered[node_index] = list(filter(lambda lap : \
-                                (lap['deleted'] == False or lap.get('late_lap', False)), self.node_laps[node_index]))
+                                (lap['deleted'] == False or lap.get('late_lap', False)), self.node_passes[node_index]))
         return filtered
 
     def any_laps_recorded(self):
         for node_index in range(self._num_nodes):
-            if len(self.node_laps[node_index]) > 0:
+            if len(self.node_passes[node_index]) > 0:
                 return True
         return False
 
@@ -185,6 +185,11 @@ class StagingTones(IntEnum):
     TONES_ONE = 1
     TONES_ALL = 2
     TONES_3_2_1 = 3
+
+
+class MinLapBehavior(IntEnum):
+    HIGHLIGHT_SHORT_LAPS = 0
+    DISCARD_SHORT_LAPS = 1
 
 
 class WinCondition(IntEnum):
