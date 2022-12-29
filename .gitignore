@@ -4,6 +4,7 @@
 config.json
 db_bkp
 /src/libraries
+/**/__pycache__
 logs
 /src/server/static/user/*
 !/src/server/static/user/README.md

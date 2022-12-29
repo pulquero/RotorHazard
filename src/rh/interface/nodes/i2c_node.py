@@ -1,6 +1,7 @@
 '''RotorHazard I2C interface layer.'''
 import logging
 
+from smbus2 import SMBus
 from .. import RHInterface as rhi
 
 logger = logging.getLogger(__name__)
@@ -15,12 +16,14 @@ class I2CNodeManager(rhi.RHNodeManager):
 
     def _read_command(self, command, size):
         def _read():
-            return self.i2c_bus.i2c.read_i2c_block_data(self.i2c_addr, command, size + 1)
+            with SMBus(self.i2c_bus.id) as bus:
+                return bus.read_i2c_block_data(self.i2c_addr, command, size + 1)
         return self.i2c_bus.with_i2c(_read)
 
     def _write_command(self, command, data):
         def _write():
-            self.i2c_bus.i2c.write_i2c_block_data(self.i2c_addr, command, data)
+            with SMBus(self.i2c_bus.id) as bus:
+                bus.write_i2c_block_data(self.i2c_addr, command, data)
         self.i2c_bus.with_i2c(_write)
 
 

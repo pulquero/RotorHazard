@@ -2,7 +2,9 @@
 import logging
 
 from . import I2CSensor, Reading
+from smbus2 import SMBus
 import bme280
+
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +16,8 @@ class BME280Sensor(I2CSensor):
         self._readData()
 
     def _readData(self):
-        self.data = bme280.sample(self.i2c_bus.i2c, self.i2c_address)
+        with SMBus(self.i2c_bus.id) as bus:
+            self.data = bme280.sample(bus, self.i2c_address)
 
     @Reading(units='°C')
     def temperature(self):
