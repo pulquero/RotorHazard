@@ -6,9 +6,8 @@ do
 	if ! bundle exec arduino_ci.rb --skip-examples-compilation --testfile-select=$test_name; then
 		exit 1
 	fi
-	gcov -b -c *.cpp
+	gcov -b -c .arduino_ci/*.gcno
 	mkdir $cov_dir
 	mv *.gcov $cov_dir
-	rm *.gcda
-	rm *.gcno
+	rm -fr .arduino_ci
 done

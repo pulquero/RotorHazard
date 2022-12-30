@@ -1,6 +1,7 @@
 #ifndef rx_h
 #define rx_h
 
+#include "config.h"
 #include "util/rhtypes.h"
 
 inline freq_t canonicalFrequency(freq_t f) {

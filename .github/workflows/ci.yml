@@ -62,7 +62,7 @@ jobs:
     - name: Install Arduino CI
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: 2.6
+        ruby-version: 3.2
         working-directory: src/node
         bundler-cache: true
 

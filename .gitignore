@@ -4,6 +4,7 @@
 config.json
 db_bkp
 /src/libraries
+/src/node/.arduino_ci
 /**/__pycache__
 logs
 /src/server/static/user/*
