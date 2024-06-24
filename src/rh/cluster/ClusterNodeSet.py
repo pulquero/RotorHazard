@@ -482,7 +482,7 @@ class ClusterNodeSet:
                 {'address': secondary.address, \
                  'modeIndicator': ('M' if secondary.isMirrorMode else 'S'), \
                  'minLatencyMs':  secondary.latencyAveragerObj.min, \
-                 'avgLatencyMs': int(round(self.latencyAveragerObj.mean)), \
+                 'avgLatencyMs': None if secondary.latencyAveragerObj.mean is None else int(round(secondary.latencyAveragerObj.mean)), \
                  'maxLatencyMs': secondary.latencyAveragerObj.max, \
                  'lastLatencyMs': secondary.latencyAveragerObj.last, \
                  'numDisconnects': secondary.numDisconnects, \
